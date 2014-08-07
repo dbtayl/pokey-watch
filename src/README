@@ -1,0 +1,9 @@
+This code should build with GCC-ARM, eg from https://launchpad.net/gcc-arm-embedded
+
+It also requires code to generate a CRC and insert it into the binary; one such
+example can be found here:
+
+https://github.com/microbuilder/LPC1343CodeBase/blob/master/tools/lpcrc/lpcrc.c
+
+
+You'll need to include both the CRC tool and arm-none-eabi-* in your PATH.
