@@ -10,9 +10,9 @@
 #define LED_VS 0x00000400
 #define LED_ALL 0x000007C0
 
-#define CENT_VFVS 30
-#define CENT_FS 20
-#define CENT_IT 10
+#define CENT_VFVS 21
+#define CENT_FS 14
+#define CENT_IT 7
 
 //NOTE: 256 points seems to be the max with 8k of RAM- ~800B short of 512...
 //Works with frequencies up to 900 Hz (which is ~A5)
@@ -23,6 +23,11 @@
 volatile kiss_fft_scalar data[N_POINTS];
 volatile kiss_fft_cpx fftout[N_POINTS/2 + 1];
 volatile uint16_t i = 0;
+
+//Smooth the results somewhat
+#define NUM_SMOOTH 3
+float smoothFreq[NUM_SMOOTH];
+short currentSmooth = 0;
 
 void setup()
 {
@@ -50,7 +55,7 @@ void loop()
 {
 	//mem needs to be:
 	//subsize = sizeof(struct kiss_fft_state) + sizeof(kiss_fft_cpx)*(nfft-1); /* twiddle factors*/
-  //memneeded = sizeof(struct kiss_fftr_state) + subsize + sizeof(kiss_fft_cpx) * ( nfft * 3 / 2);
+	//memneeded = sizeof(struct kiss_fftr_state) + subsize + sizeof(kiss_fft_cpx) * ( nfft * 3 / 2);
   
   size_t memSize = sizeof(struct kiss_fftr_state) + sizeof(struct kiss_fft_state) + sizeof(kiss_fft_cpx)*(N_POINTS-1) + sizeof(kiss_fft_cpx) * (N_POINTS * 3 / 2);
 	uint8_t mem[sizeof(struct kiss_fftr_state) + sizeof(struct kiss_fft_state) + sizeof(kiss_fft_cpx)*(N_POINTS-1) + sizeof(kiss_fft_cpx) * (N_POINTS * 3 / 2)];
@@ -62,18 +67,14 @@ void loop()
 	if(cfg == NULL)
 	{
 		LPC_GPIO0->DATA = 0xFFFFFFFF ^ ( LED_F | LED_S );
-		while(1)
-		{
-		}
+		while(1) {}
 	}
 	
 	//Loop forever
 	while(1)
 	{	
 		//Wait for data collection to finish
-		while(i < N_POINTS)
-		{
-		}
+		while(i < N_POINTS) {}
 		
 		//To frequency domain
 		kiss_fftr(cfg, data, fftout);
@@ -99,6 +100,22 @@ void loop()
 		float left = sqrt(fftout[peakidx-1].r * fftout[peakidx-1].r + fftout[peakidx-1].i * fftout[peakidx-1].i);
 		float right = sqrt(fftout[peakidx+1].r * fftout[peakidx+1].r + fftout[peakidx+1].i * fftout[peakidx+1].i);
 		float mainFreqf = (left * (peakidx-1) + right * (peakidx+1) + peakidx * peakval) * SAMPLE_FREQ/N_POINTS / (left + peakval + right);
+		
+		smoothFreq[currentSmooth] = mainFreqf;
+		currentSmooth = (currentSmooth + 1) % NUM_SMOOTH;
+		
+		
+		//Calculate a running average of samples
+		{
+			mainFreqf = 0.0f;
+			short s;
+			for(s = 0; s < NUM_SMOOTH; s++)
+			{
+				mainFreqf += smoothFreq[s];
+			}
+			mainFreqf /= ((float)NUM_SMOOTH);
+		}
+		
 		int mainFreq = (int)(mainFreqf + 0.5f);
 		
 		
@@ -158,9 +175,9 @@ void loop()
 			uint8_t k = 1;
 			for(k = 1; k < NUM_PITCHES; k++)
 			{
-				if( abs(pitches[k] - mainFreqf) / cent[k] < abs(centErrf) )
+				if( abs(mainFreqf - pitches[k]) / cent[k] < abs(centErrf) )
 				{
-					centErrf = (pitches[k] - mainFreqf) / cent[k];
+					centErrf = (mainFreqf - pitches[k]) / cent[k];
 					center = k;
 				}
 			}
@@ -171,7 +188,7 @@ void loop()
 		
 		
 		//printf("Main frequency: %f\n", mainFreq);
-		/*char out[9];
+		char out[9];
 		out[7] = '\n';
 		out[8] = '\r';
 		out[4] = ' ';
@@ -191,10 +208,10 @@ void loop()
 		out[6] = 'C';
 		out[0] = (center%100)/10 + 0x30;
 		out[1] = (center%10) + 0x30;
-		out[2] = centErr < 0 ? '+' : '-'; //note how centErr is calculated
+		out[2] = centErr < 0 ? '-' : '+';
 		out[3] = (abs(centErr)%100)/10 + 0x30;
 		out[4] = (abs(centErr)%10) + 0x30;
-		UARTWrite(out,9);*/
+		UARTWrite(out,9);
 		
 		/*
 		char out[8];
@@ -240,7 +257,7 @@ void loop()
 		}
 		
 		//Prepare for next loop
-		Delay(250);
+		//Delay(250);
 		i = 0;
 		Timer3Go();
 	}
