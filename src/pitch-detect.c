@@ -57,16 +57,24 @@ float pitchDetect()
 			}
 		}
 	}
-	
+
+	//Using the weighted average of 5 values seems to produce a better result than for 3
+	//Maximum error reduced, both in pure-tone and in a slightly noisy scenario
 	float left = sqrt(fftout[peakidx-1].r * fftout[peakidx-1].r + fftout[peakidx-1].i * fftout[peakidx-1].i);
 	float right = sqrt(fftout[peakidx+1].r * fftout[peakidx+1].r + fftout[peakidx+1].i * fftout[peakidx+1].i);
-	float mainFreqf = (left * (peakidx-1) + right * (peakidx+1) + peakidx * peakval) * SAMPLE_FREQ/N_POINTS / (left + peakval + right);
+	//float mainFreqf = (left * (peakidx-1) + right * (peakidx+1) + peakidx * peakval) * SAMPLE_FREQ/N_POINTS / (left + peakval + right);
+
+	//These lines seem to help precision by up to a cent in the worst cases
+	float left2 = sqrt(fftout[peakidx-2].r * fftout[peakidx-2].r + fftout[peakidx-2].i * fftout[peakidx-2].i);
+	float right2 = sqrt(fftout[peakidx+2].r * fftout[peakidx+2].r + fftout[peakidx+2].i * fftout[peakidx+2].i);
+	float mainFreqf = (left2 * (peakidx-2) + left * (peakidx-1) + right * (peakidx+1) + right2 * (peakidx+2) + peakidx * peakval) * SAMPLE_FREQ/N_POINTS / (left + peakval + right + left2 + right2);
+
 	
 	smoothFreq[currentSmooth] = mainFreqf;
 	currentSmooth = (currentSmooth + 1) % NUM_SMOOTH;
 	
 	
-	//Calculate a running average of samples
+	//Calculate a running average of samples; try to further enhance precision
 	{
 		mainFreqf = 0.0f;
 		short s;
@@ -83,13 +91,42 @@ float pitchDetect()
 
 
 #ifdef PITCH_DETECT_AUTO
+float hanning[N_POINTS];
+int16_t data[N_POINTS];
+
 int pitchDetectInit()
 {
+	//Fill in hanning window
+	int k;
+	for(k = 0; k < N_POINTS; k++)
+	{
+		hanning[k] = 0.5f * (1.0f - cosf(2.0f * M_PI * k / (N_POINTS - 1)));
+	}
+	
+	/*
+	This code will calculate hanning autocorrelation, if that turns out to be necessary
+	int j;
+	for(k = 0; k < N_POINTS; k++)
+	{
+		for(j = 0; j + k < N_POINTS; j++)
+		{
+			hanningAuto[k] += hanning[j] * hanning[j+k];
+		}
+	}
+	*/
+	
 	return 0;
 }
 
 float pitchDetect()
 {
+	//Wait for data collection to finish
+	while(i < N_POINTS) {}
 	
+	//Filter with hanning window
+	for(i = 0; i < N_POINTS; i++)
+	{
+		data[i] *= hanning[i];
+	}
 }
 #endif

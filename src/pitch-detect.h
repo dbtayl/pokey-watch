@@ -12,6 +12,8 @@
 #define CENT_FS 14
 #define CENT_IT 7
 
+extern volatile uint16_t i;
+
 //Define PITCH_DETECT_FFT to use the FFT approach to determine pitches.
 //Define PITCH_DETECT_AUTO to use autocorrelation method
 //Both use the same prototypes
@@ -31,15 +33,19 @@ float pitchDetect();
 #define SAMPLE_FREQ 1000
 #define N_POINTS 256
 
-extern volatile uint16_t i;
 extern volatile kiss_fft_scalar data[];
-#endif
+#endif //PITCH_DETECT_FFT
 
 
 
 
 #ifdef PITCH_DETECT_AUTO
+#define SAMPLE_FREQ 1000
+#define N_POINTS 256
+extern float hanning[];
+extern int16_t data[];
 
-#endif
+#endif //PITCH_DETECT_AUTO
 
-#endif
+
+#endif //PITCH_DETECT_H

@@ -21,6 +21,17 @@ void setup()
 	}
 }
 
+#ifdef PITCH_DETECT_AUTO
+void Timer3Interrupt0()
+{
+	data[i] = ADCRead(CHN0) * hanning[i];
+	i++;
+	if(i >= N_POINTS) //we really just care about ==, but >= is less error-prone
+	{
+		Timer3Pause();
+	}
+}
+#else
 void Timer3Interrupt0()
 {
 	data[i] = ADCRead(CHN0);
@@ -30,6 +41,7 @@ void Timer3Interrupt0()
 		Timer3Pause();
 	}
 }
+#endif
   
 void loop()
 {

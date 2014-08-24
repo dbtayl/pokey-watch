@@ -40,7 +40,7 @@ $Descr A4 11693 8268
 encoding utf-8
 Sheet 1 1
 Title ""
-Date "19 apr 2014"
+Date "23 aug 2014"
 Rev ""
 Comp ""
 Comment1 ""
@@ -744,7 +744,7 @@ Wire Wire Line
 	5800 2600 5700 2600
 Connection ~ 5700 2600
 Wire Wire Line
-	5800 3700 5450 3700
+	5100 3700 5800 3700
 Wire Wire Line
 	5450 3700 5450 3650
 Connection ~ 5800 3700
@@ -879,4 +879,16 @@ Wire Wire Line
 Connection ~ 1600 5800
 Wire Wire Line
 	1000 6850 1000 6950
+Text GLabel 5100 3700 0    60   Input ~ 0
+RESET
+Connection ~ 5450 3700
+Text GLabel 5500 2850 1    60   Input ~ 0
+PGRM
+Wire Wire Line
+	5500 2850 5500 2950
+Wire Wire Line
+	5500 2950 5600 2950
+Wire Wire Line
+	5600 2950 5600 3350
+Connection ~ 5600 3350
 $EndSCHEMATC
