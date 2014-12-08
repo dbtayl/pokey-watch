@@ -1,3 +1,7 @@
+//Look at Goertzel Algorithm
+
+
+
 #include "uafunc.h"
 #include "pitches.h"
 #include "pitch-detect.h"
