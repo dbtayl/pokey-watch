@@ -1,0 +1,199 @@
+G94     ( Inches per minute feed rate. )
+G20     ( Units == INCHES.             )
+G90     ( Absolute coordinates.        )
+S5000  ( RPM spindle speed.           )
+M3      ( Spindle on clockwise.        )
+
+
+
+G64 P0.001 ( set maximum deviation from commanded toolpath )
+
+G04 P0 ( dwell for no time -- G64 should not smooth over this point )
+
+(MSG, Tool should be zeroed to the table; the other side should have been cut already)
+(MSG, Make sure ZSafe is set to accommodate the thickness of the workpiece)
+M0
+
+(Constants for the whole cut)
+#1 = [54/25.4]				(outer watch diameter)
+#<or> = [#1/2]
+#2 = [46/25.4 + 0.008] (PCB inset diameter, with some padding)
+#4 = 0.25							(cutter diameter)
+#<toolr> = [#4/2]
+#<feedxy> = 40							(feed rate)
+#<passdepth> = 0.025						(Z pass depth)
+#<cutoutpassdepth> = [#<passdepth> - 0.005]			(Z pass depth when cutting out)
+#<feedz> = 3
+#<worktop> = [0.378];
+#<zsafe> = [#<worktop> + 0.05]
+#<finishedtop> = [8/25.4] (height of top of finished piece)
+
+
+
+(Mill down to the correct thickness, which is 8mm)
+
+(Start cylindrical pocket)
+G00 Z[#<zsafe>]
+G01 F[#<feedz>] Z[[0.378 + 0.05]]
+#<ccd> = [[0.378 + 0.025] - #<passdepth>]
+#<endr> = [[[#<or> + #<toolr>] - #<toolr>]]
+#<zlow> = #<finishedtop>
+#<numsteps> = [4]
+
+o127 while [#<ccd> GE #<zlow>]
+	#<currentr> = [[#<toolr> / 1.5]]
+	#<nextr> = [#<currentr>]
+	#<currentstep> = [0]
+	#<nextstep> = [[[#<currentstep> + 1] MOD #<numsteps>]]
+
+	(Feed down to correct depth)
+	G00 X[[0.0000 + #<toolr>/1.5]] Y[0.0000]
+	G02 F[#<feedxy>] X[[0.0000 + #<toolr>/1.5]] Y[0.0000] Z[#<ccd>] I[0.0000 - [0.0000 + #<toolr>/1.5]] J[0.0000 - 0.0000]
+
+	(Spiral out)
+	o128 while [#<nextr> LE #<endr>]
+		#<cangle> = [[-90 * #<currentstep>]]
+		#<nangle> = [[-90 * #<nextstep>]]
+		#<tmpcx> = [[0.0000 - [[#<nextr>*#<nextr> - #<currentr>*#<currentr>] / [2 * #<currentr>] * cos[#<cangle>]] ]]
+		#<tmpcy> = [[0.0000 - [[#<nextr>*#<nextr> - #<currentr>*#<currentr>] / [2 * #<currentr>] * sin[#<cangle>]] ]]
+		#<tmpsx> = [[0.0000 + #<currentr> * cos[#<cangle>]]]
+		#<tmpsy> = [[0.0000 + #<currentr> * sin[#<cangle>]]]
+
+		G02 F[#<feedxy>] X[[0.0000 + #<nextr> * cos[#<nangle>]]] Y[[0.0000 + #<nextr> * sin[#<nangle>]]] I[#<tmpcx> - #<tmpsx>] J[#<tmpcy> - #<tmpsy>]
+
+		#<currentstep> = [#<nextstep>]
+		#<nextstep> = [[[#<currentstep> + 1] MOD #<numsteps>]]
+		#<currentr> = [#<nextr>]
+		#<nextr> = [[#<currentr> + #<toolr> / #<numsteps>]]
+
+		(Set next radius)
+		o129 if [[#<nextr> GT #<endr>] AND [#<currentr> LT #<endr>]]
+			#<nextr> = [#<endr>]
+		o129 endif
+	o128 endwhile
+
+	(Cut a full circle to finish up edges)
+	G02 F[#<feedxy>] X[[0.0000 + #<currentr> * cos[#<currentstep>*-90]]] Y[[0.0000 + #<currentr> * sin[#<currentstep>*-90]]] I[0.0000 - [0.0000 + #<currentr> * cos[#<currentstep>*-90]]] J[0.0000 - [0.0000 + #<currentr> * sin[#<currentstep>*-90]]]
+
+	(Set next depth)
+	o130 if [[#<ccd> GT #<zlow>] AND [[#<ccd> - #<passdepth>] LT #<zlow>]]
+		#<ccd> = [#<zlow>]
+	o130 else
+		#<ccd> = [[#<ccd> - #<passdepth>]]
+	o130 endif
+o127 endwhile
+G00 Z[#<zsafe>]
+(End cylindrical pocket)
+
+
+
+
+
+
+
+(Partially cut out)
+(use variables in the 30s)
+
+(retract)
+G00 Z#<zsafe>
+
+#30 = [3.5/25.4] (Zmin)
+#31 = #<worktop> (current Z)
+
+o108 while [#31 GE #30]
+	
+	G00 X[#<or> + #<toolr>] Y0.0000
+	G02 X[#<or> + #<toolr>] Y0.0000 I-[#<or> + #<toolr>] J0.0000 Z#31 F#<feedxy>
+	(G02 X[#<or> + #<toolr>] Y0.0000 I-[#<or> + #<toolr>] J0.0000 Z#31 F#<feedxy>)
+
+	(Set next depth)
+	o109 if[ [#31 GT #30] AND [[#31 - #<cutoutpassdepth>] LT #30] ]
+		#31 = #30
+	o109 else
+		#31 = [#31 - #<cutoutpassdepth>]
+	o109 endif
+o108 endwhile
+
+(retract)
+G00 Z#<zsafe>
+
+
+
+
+(retract)
+G00 Z#<zsafe>
+
+
+
+
+(bevel edge)
+M5
+(MSG, At this point, you should put in the 90-degree chamfer mill and zero it to the table)
+M0 (pause)
+
+(retract)
+G00 Z#<zsafe>
+
+(Should mill a circle larger in diameter than the watch, to be chamfering with part of the bit closer to the edge)
+(use variables in the 40s)
+#43 = [#1 + #4/4] (circle diameter)
+#40 = [#<finishedtop> - #4/8 - 2/25.4] (Max depth- for 2mm deep bevel)
+#41 = [#<finishedtop> - #4/8] (Current depth)
+
+o106 while [#41 GE #40]
+
+	G00 X[#43/2] Y0.0000
+	G02 X[#43/2] Y0.0000 I-[#43/2] J0.0000 Z#41 F#<feedxy>
+
+	(Set next depth)
+	o107 if[ [#41 GT #40] AND [[#41 - #<cutoutpassdepth>] LT #40] ]
+		#41 = #40
+	o107 else
+		#41 = [#41 - #<cutoutpassdepth>]
+	o107 endif
+o106 endwhile
+
+(One more pass to clean up the circumference)
+G02 X[#43/2] Y0.0000 I-[#43/2] J0.0000 F#<feedxy>
+
+(retract)
+G00 Z#<zsafe>
+
+
+
+(Finish cutting out)
+(use variables in the 50s)
+
+M5
+(MSG, At this point, you should put in the 1/4" end mill and zero it to the table)
+M0 (pause)
+
+(retract)
+G00 Z#<zsafe>
+
+#50 = 0 (Zmin)
+#51 = [#30 + #<passdepth>] (current Z)
+
+o110 while [#51 GE #50]
+	
+	G00 X[#<or> + #<toolr>] Y0.0000
+	G02 X[#<or> + #<toolr>] Y0.0000 I-[#<or> + #<toolr>] J0.0000 Z#51 F#<feedxy>
+
+	(Set next depth)
+	o111 if[ [#51 GT #50] AND [[#51 - #<cutoutpassdepth>] LT #50] ]
+		#51 = #50
+	o111 else
+		#51 = [#51 - #<cutoutpassdepth>]
+	o111 endif
+o110 endwhile
+
+(One last pass to cut all the way around)
+G02 X[#<or> + #<toolr>] Y0.0000 I-[#<or> + #<toolr>] J0.0000 F#<feedxy>
+
+(retract)
+G00 Z#<zsafe>
+
+
+
+M9 ( Coolant off. )
+M2 ( Program end. )

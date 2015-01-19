@@ -1,0 +1,129 @@
+G94     ( Inches per minute feed rate. )
+G20     ( Units == INCHES.             )
+G90     ( Absolute coordinates.        )
+S5000  ( RPM spindle speed.           )
+M3      ( Spindle on clockwise.        )
+
+
+(Hinge should be ~3mm tall)
+(Cut from 1/4" == 6.35mm stock)
+
+
+(Zero to table, center of watch)
+
+
+G64 P0.001 ( set maximum deviation from commanded toolpath )
+
+G04 P0 ( dwell for no time -- G64 should not smooth over this point )
+
+
+(Constants for the whole cut)
+#1 = [54/25.4]				(outer watch diameter)
+#2 = [46/25.4 + 0.008] (PCB inset diameter, with some padding)
+#4 = 0.25							(cutter diameter)
+#11 = 40							(feed rate)
+#12 = 20							(feed rate for cutting straignt into material)
+#<passdepth> = 0.025						(Z pass depth)
+#<chamferradius> = [#1/2 + #4/2]		(cutout radius with 1/4" cutter)
+
+#<stockheight> = [0.25]			(thickness of the workpiece)
+#<zsafe> = [#<stockheight> + 0.02]
+
+
+(1/4" cutter)
+(Level off top side)
+#<enddepth> = [#<stockheight>] (don't take anything off to "level" the piece)
+G00 Z#<zsafe>
+G00 X#<chamferradius> Y0.0000
+G01 F3 Z[#<stockheight> + 0.005]
+G02 X#<chamferradius> Y0.0000 I-#<chamferradius> J0.0000 Z#<enddepth> F#11
+G02 X#<chamferradius> Y0.0000 I-#<chamferradius> J0.0000 Z#<enddepth> F#11
+
+
+(Level the inside)
+#<stepover> = [0.7*#4]				(step size of clearing pass)
+#<currentradius> = [#1/2 + #<stepover>]			(current pass radius)
+#9 = 0						(current spiral approximation step)
+
+
+o101 while [#<currentradius> GT #4/4]
+	#17 = #<currentradius>
+	#<currentradius> = [#<currentradius> - #<stepover>/4]
+	
+	(offset)
+	#18 = [ [#<currentradius>*#<currentradius> + #17*#17] / [2 * #17] ]
+	o103 if [#9 GE 2]
+			#<currentradius> = -#<currentradius>
+			#18 = -#18
+	o103 endif
+	
+	o102 if [ [#9 MOD 2] LT 1 ] (adjust along X)
+		G02 F#11 X0.0000 Y-#<currentradius> I-#18 J0.0000
+	o102 else (adjust along Y)
+		G02 F#11 X-#<currentradius> Y0.0000 I0.0000 J#18
+	o102 endif
+	
+	o104 if [#9 GE 2]
+			#<currentradius> = -#<currentradius>
+	o104 endif
+	
+	#9 = [[#9 + 1] MOD 4]
+o101 endwhile
+
+
+(Get ready to partially cut out- make way for the chamfer mill)
+G00 X#<chamferradius> Y0.0000
+
+(We need to cut down 2mm)
+#<enddepth> = [#<stockheight> - #<passdepth>]
+
+o105 while [#<enddepth> GE [#<stockheight> - 2.0/25.4 - 0.005]]
+	G02 X#<chamferradius> Y0.0000 I-#<chamferradius> J0.0000 Z#<enddepth> F#11
+	G02 X#<chamferradius> Y0.0000 I-#<chamferradius> J0.0000 Z#<enddepth> F#11
+	
+	(Set next depth)
+	o123 if[ [#<enddepth> GT [#<stockheight> - 2.0/25.4 - 0.005]] AND [[#<enddepth> - #<passdepth>] LT [#<stockheight> - 2.0/25.4 - 0.005]] ]
+		#<enddepth> = [#<stockheight> - 2.0/25.4 - 0.005]
+	o123 else
+		#<enddepth> = [#<enddepth> - #<passdepth>]
+	o123 endif
+o105 endwhile
+
+
+G00 Z#<zsafe> (retract)
+
+(Switch to chamfer mill)
+M5
+(MSG, At this point, you should put in the 1/4" 90-degree chamfer mill and zero it to the table)
+M0 (pause)
+
+#<chamferradius> = [#1/2 + 2/25.4]
+
+G00 Z#<zsafe>
+G00 X#<chamferradius> Y0.0000
+
+(Do the same thing- cut down 2mm, but this time we'll bevel the edge instead of cutting out)
+#<enddepth> = [#<stockheight> - 2/25.4] (depth- just touch the trench we cut)
+G01 F3 Z#<enddepth>
+
+o115 while [#<chamferradius> GE [#1/2]]
+	G01 F#12 X#<chamferradius>
+	G02 X#<chamferradius> Y0.0000 I-#<chamferradius> J0.0000 Z#<enddepth> F#11
+	
+	(Set next radius)
+	o133 if[ [#<chamferradius> GT [#1/2]] AND [[#<chamferradius> - #<passdepth>] LT [#1/2]] ]
+		#<chamferradius> = [#1/2]
+	o133 else
+		#<chamferradius> = [#<chamferradius> - #<passdepth>]
+	o133 endif
+o115 endwhile
+
+
+G00 Z#<zsafe>	(retract)
+
+
+
+M9 ( Coolant off. )
+M2 ( Program end. )
+
+

@@ -1,0 +1,451 @@
+G94     ( Inches per minute feed rate. )
+G20     ( Units == INCHES.             )
+G90     ( Absolute coordinates.        )
+S5000  ( RPM spindle speed.           )
+M3      ( Spindle on clockwise.        )
+
+
+(Hinge should be ~3mm tall)
+(Need at least 7mm of stock -> 3/8")
+(FIXME: Test with 1/4" piece)
+(This should be run after the outside code)
+(Hinge is 7mm wide, 4mm deep, 4mm tall, centered)
+
+(Main lid should be 3mm thick- thus extending 3mmfrom the table top)
+
+(Zero to table, center of watch)
+
+
+
+G64 P0.001 ( set maximum deviation from commanded toolpath )
+
+G04 P0 ( dwell for no time -- G64 should not smooth over this point )
+
+
+(Constants for the whole cut)
+#<od> = [54/25.4]				(outer watch diameter)
+#<or> = [#<od>/2]				(outer watch radius)
+#2 = [46/25.4 + 0.008] (PCB inset diameter, with some padding)
+#<toold> = 0.25							(cutter diameter)
+#<feedxy> = 40							(feed rate)
+#<passdepth> = 0.025						(Z pass depth)
+#14 = [#<or> + #<toold>/2]		(cutout radius with 1/4" cutter)
+#<stockheight> = [0.25]			(thickness of the workpiece)
+#<zsafe> = [#<stockheight>  + 0.05]							(ZSafe)
+#<feedz> = 3
+#<toold> = 0.25;
+#<toolr> = [#<toold> / 2]
+#<stepover> = 0.82
+#<cutoutr> = [#<or> + #<toolr>]
+
+G00 Z#<zsafe>
+
+(Mill down to top of hinge)
+(Start cylindrical pocket)
+G00 Z[#<zsafe>]
+G01 F[#<feedz>] Z[[#<stockheight> + 0.05]]
+#<ccd> = [[#<stockheight>] - #<passdepth>]
+#<endr> = #<cutoutr> (End at cut-out radius)
+#<zlow> = [[7/25.4]]
+#<numsteps> = [4]
+
+o131 while [#<ccd> GE #<zlow>]
+	#<currentr> = [[#<toolr> / 1.5]]
+	#<nextr> = [#<currentr>]
+	#<currentstep> = [0]
+	#<nextstep> = [[[#<currentstep> + 1] MOD #<numsteps>]]
+
+	(Feed down to correct depth)
+	G00 X[[0.0000 + #<toolr>/1.5]] Y[0.0000]
+	G02 F[#<feedxy>] X[[0.0000 + #<toolr>/1.5]] Y[0.0000] Z[#<ccd>] I[0.0000 - [0.0000 + #<toolr>/1.5]] J[0.0000 - 0.0000]
+	G02 F[#<feedxy>] X[[0.0000 + #<toolr>/1.5]] Y[0.0000] Z[#<ccd>] I[0.0000 - [0.0000 + #<toolr>/1.5]] J[0.0000 - 0.0000]
+
+	(Spiral out)
+	o132 while [#<nextr> LE #<endr>]
+		#<cangle> = [[-90 * #<currentstep>]]
+		#<nangle> = [[-90 * #<nextstep>]]
+		#<tmpcx> = [[0.0000 - [[#<nextr>*#<nextr> - #<currentr>*#<currentr>] / [2 * #<currentr>] * cos[#<cangle>]] ]]
+		#<tmpcy> = [[0.0000 - [[#<nextr>*#<nextr> - #<currentr>*#<currentr>] / [2 * #<currentr>] * sin[#<cangle>]] ]]
+		#<tmpsx> = [[0.0000 + #<currentr> * cos[#<cangle>]]]
+		#<tmpsy> = [[0.0000 + #<currentr> * sin[#<cangle>]]]
+
+		G02 F[#<feedxy>] X[[0.0000 + #<nextr> * cos[#<nangle>]]] Y[[0.0000 + #<nextr> * sin[#<nangle>]]] I[#<tmpcx> - #<tmpsx>] J[#<tmpcy> - #<tmpsy>]
+
+		#<currentstep> = [#<nextstep>]
+		#<nextstep> = [[[#<currentstep> + 1] MOD #<numsteps>]]
+		#<currentr> = [#<nextr>]
+		#<nextr> = [[#<currentr> + #<toold> * #<stepover> / #<numsteps>]]
+
+		(Set next radius)
+		o133 if [[#<nextr> GT #<endr>] AND [#<currentr> LT #<endr>]]
+			#<nextr> = [#<endr>]
+		o133 endif
+	o132 endwhile
+
+	(Cut a full circle to finish up edges)
+	G02 F[#<feedxy>] X[[0.0000 + #<endr> * cos[#<currentstep>*-90]]] Y[[0.0000 + #<endr> * sin[#<currentstep>*-90]]] I[0.0000 - [0.0000 + #<endr> * cos[#<currentstep>*-90]]] J[0.0000 - [0.0000 + #<endr> * sin[#<currentstep>*-90]]]
+
+	(Set next depth)
+	o134 if [[#<ccd> GT #<zlow>] AND [[#<ccd> - #<passdepth>] LT #<zlow>]]
+		#<ccd> = [#<zlow>]
+	o134 else
+		#<ccd> = [[#<ccd> - #<passdepth>]]
+	o134 endif
+o131 endwhile
+G00 Z[#<zsafe>]
+(End cylindrical pocket)
+
+
+
+
+
+(Mill out the inside, around the hinge)
+(Hinge is 7mm wide, 4mm deep, 4mm tall, centered)
+(Add a "latch"; semi-circular 0.250" diameter, minus 3 mil clearance, or 0.244" diameter)
+(Make this feature 0.050" tall)
+#<latchh> = [0.05]
+#<latchd> = [0.250-0.006]
+#<latchr> = [#<latchd>/2]
+
+(Start mill around hinge)
+#<ccd> = [7/25.4 - #<passdepth>]
+#<endr> = [[#<or> - #<toolr>]]
+#<zlow> = [3/25.4 + #<latchh>]
+#<hinged> = [4/25.4]
+#<hingew> = [7/25.4]
+#<hinger> = [#<endr> - #<hinged>]
+
+o231 while [#<ccd> GE #<zlow>]
+	#<currentr> = [[#<toolr> / 1.5]]
+	#<nextr> = [#<currentr>]
+	#<currentstep> = [0]
+	#<nextstep> = [[[#<currentstep> + 1] MOD #<numsteps>]]
+
+	(Feed down to correct depth)
+	G00 X[[0.0000 + #<toolr>/1.5]] Y[0.0000]
+	G02 F[#<feedxy>] X[[0.0000 + #<toolr>/1.5]] Y[0.0000] Z[#<ccd>] I[0.0000 - [0.0000 + #<toolr>/1.5]] J[0.0000 - 0.0000]
+	G02 F[#<feedxy>] X[[0.0000 + #<toolr>/1.5]] Y[0.0000] Z[#<ccd>] I[0.0000 - [0.0000 + #<toolr>/1.5]] J[0.0000 - 0.0000]
+
+	(Mill circles until you'd hit the hinge)
+	#<currentr> = [#<currentr> + #<stepover> * #<toold>]
+	o300 while [#<currentr> LE #<hinger>]
+		
+		(Mill out to radius)
+		G01 F#<feedxy> X#<currentr>
+		
+		(Cut circle)
+		G02 F#<feedxy> X#<currentr> Y0 I-#<currentr> J0.0000
+		
+		(Set next radius)
+		#<nextr> = [#<currentr> + #<stepover> * #<toold>]
+		o301 if[ [#<nextr> GE #<hinger>] AND [#<currentr> LT #<hinger>] ]
+			#<currentr> = #<hinger>
+		o301 else
+			#<currentr> = #<nextr>
+		o301 endif  
+	o300 endwhile
+	
+	
+	
+	(Cut up to and across the hinge, up to the point where we'd cut hinge edges)
+	#<cy> = #<hinger>
+	#<cx> = [ SQRT[#<currentr>*#<currentr> - #<cy>*#<cy>] ] (X dimension we can have without crashing into hinge)
+	o302 while [#<cx> LT #<hingew>/2 + #<toolr>]
+	
+		G01 F#<feedxy> X#<cx> Y#<cy>
+		G02 F#<feedxy> X-#<cx> Y#<cy> I-#<cx> J-#<cy>
+		
+	
+		(Set next radius)
+		#<nextr> = [#<currentr> + #<stepover> * #<toold>]
+		#<cx> = [ SQRT[#<nextr>*#<nextr> - #<cy>*#<cy>] ]
+		#<currentr> = #<nextr>
+	o302 endwhile
+	
+	
+	G00 X0.0000 Y#<cy>
+	
+	
+	(Cut around the hinge)
+	(cx is fixed here, just change cy)
+	#<cx> = [#<hingew>/2 + #<toolr>]
+	#<cy> = [ SQRT[#<currentr>*#<currentr> - #<cx>*#<cx>] ]
+	o303 while [#<currentr> LE #<cutoutr>]
+		G01 F#<feedxy> X#<cx>
+		G01 F#<feedxy> Y#<cy>
+		G02 F#<feedxy> X-#<cx> Y#<cy> I-#<cx> J-#<cy>
+		G01 F#<feedxy> Y[#<or> - #<toolr> - #<hinged>]
+	
+		(Set next radius)
+		#<nextr> = [#<currentr> + #<stepover> * #<toold>]
+		o304 if[ [#<nextr> GE #<cutoutr>] AND [#<currentr> LT #<cutoutr>] ]
+			#<currentr> = #<cutoutr>
+		o304 else
+			#<currentr> = #<nextr>
+		o304 endif
+		
+		#<cy> = [ SQRT[#<currentr>*#<currentr> - #<cx>*#<cx>] ]
+	o303 endwhile
+	
+	
+	(Do a little arc around the back of the hinge)
+	#<currentr> = #<cutoutr>
+	#<cy> = [ SQRT[#<currentr>*#<currentr> - #<cx>*#<cx>] ]
+	G00 Y#<cy>
+	G02 F#<feedxy> X#<cx> Y#<cy> I#<cx> J-#<cy>
+	G00 Y#<hinger>
+	G00 X[#<toolr>/1.5] Y0.0000
+
+
+	(Set next depth)
+	o234 if [[#<ccd> GT #<zlow>] AND [[#<ccd> - #<passdepth>] LT #<zlow>]]
+		#<ccd> = [#<zlow>]
+	o234 else
+		#<ccd> = [[#<ccd> - #<passdepth>]]
+	o234 endif
+o231 endwhile
+(Don't  go to zsafe, as the next cut is basically the same as this one)
+(G00 Z[#<zsafe>])
+(End mill around hinge)
+
+
+
+(Start mill around hinge with latch)
+(FIXME: Needs to, you know, mill around latch)
+#<zlow> = [3/25.4]
+
+o631 while [#<ccd> GE #<zlow>]
+	#<currentr> = [[#<toolr> / 1.5]]
+	#<nextr> = [#<currentr>]
+	#<currentstep> = [0]
+	#<nextstep> = [[[#<currentstep> + 1] MOD #<numsteps>]]
+
+	(Feed down to correct depth)
+	G00 X[[0.0000 + #<toolr>/1.5]] Y[0.0000]
+	G02 F[#<feedxy>] X[[0.0000 + #<toolr>/1.5]] Y[0.0000] Z[#<ccd>] I[0.0000 - [0.0000 + #<toolr>/1.5]] J[0.0000 - 0.0000]
+	G02 F[#<feedxy>] X[[0.0000 + #<toolr>/1.5]] Y[0.0000] Z[#<ccd>] I[0.0000 - [0.0000 + #<toolr>/1.5]] J[0.0000 - 0.0000]
+
+	(Mill circles until you'd hit the hinge)
+	#<currentr> = [#<currentr> + #<stepover> * #<toold>]
+	o700 while [#<currentr> LE #<hinger>]
+		
+		(Mill out to radius)
+		G01 F#<feedxy> X#<currentr>
+		
+		(Cut circle)
+		G02 F#<feedxy> X#<currentr> Y0 I-#<currentr> J0.0000
+		
+		(Set next radius)
+		#<nextr> = [#<currentr> + #<stepover> * #<toold>]
+		o701 if[ [#<nextr> GE #<hinger>] AND [#<currentr> LT #<hinger>] ]
+			#<currentr> = #<hinger>
+		o701 else
+			#<currentr> = #<nextr>
+		o701 endif  
+	o700 endwhile
+	
+	
+	
+	(Cut up to and across the hinge, up to the point where we'd cut hinge edges)
+	#<cy> = #<hinger>
+	#<cx> = [ SQRT[#<currentr>*#<currentr> - #<cy>*#<cy>] ] (X dimension we can have without crashing into hinge)
+	o702 while [#<cx> LT #<hingew>/2 + #<toolr>]
+	
+		G01 F#<feedxy> X#<cx> Y#<cy>
+		G02 F#<feedxy> X-#<cx> Y#<cy> I-#<cx> J-#<cy>
+		
+	
+		(Set next radius)
+		#<nextr> = [#<currentr> + #<stepover> * #<toold>]
+		#<cx> = [ SQRT[#<nextr>*#<nextr> - #<cy>*#<cy>] ]
+		#<currentr> = #<nextr>
+	o702 endwhile
+	
+	
+	G00 X0.0000 Y#<cy>
+	
+	
+	(Cut around the hinge)
+	(cx is fixed here, just change cy)
+	#<cx> = [#<hingew>/2 + #<toolr>]
+	#<cy> = [ SQRT[#<currentr>*#<currentr> - #<cx>*#<cx>] ]
+	o703 while [#<currentr> LE #<cutoutr>]
+		G01 F#<feedxy> X#<cx>
+		G01 F#<feedxy> Y#<cy>
+
+		(If cut would interfere with latch, cut around it)
+		o800 if [ [#<cy> + #<toolr>] GT [#<or> - #<latchr>] ]
+			o801 if[ #<currentr> EQ #<cutoutr>]
+				(If we're doing the final cut, be sure to cut around latch)
+				(Cut to bottom middle)
+				G02 F#<feedxy> X0.0000 Y-#<currentr> I-#<cx> J-#<cy>
+
+				(Backtrack to edge of latch)
+				#<bx> = [#<latchr> + #<toolr>]
+				#<yfeedpos> = [ -SQRT[#<currentr>**2 - #<bx>**2] ]
+				G03 F#<feedxy> X#<bx> Y#<yfeedpos> I0.0000 J#<currentr>
+
+				(Feed up)
+				G01 F#<feedxy> X#<bx> Y-#<or>
+
+				(Arc 90 degrees and back)
+				#<ty> = [-#<or> + #<toolr> + #<latchr>]
+				G03 F#<feedxy> X0.0000 Y#<ty> I-#<bx> J0.0000
+				G02 F#<feedxy> X#<bx> Y-#<or> I0.0000 J-#<bx>
+
+				(feed down)
+				G01 F#<feedxy> X#<bx> Y#<yfeedpos>
+
+				(Arc to far edge of latch)
+				G02 F#<feedxy> X-#<bx> Y#<yfeedpos> I-#<bx> J-#<yfeedpos>
+
+				(Feed up)
+				G01 F#<feedxy> X-#<bx> Y-#<or>
+
+				(Arc 90 degrees and back)
+				#<ty> = [-#<or> + #<toolr> + #<latchr>]
+				G02 F#<feedxy> X0.0000 Y#<ty> I#<bx> J0.0000
+				G03 F#<feedxy> X-#<bx> Y-#<or> I0.0000 J-#<bx>
+
+				(feed down)
+				G01 F#<feedxy> X-#<bx> Y#<yfeedpos>
+
+				(finish initial arc)
+				G02 F#<feedxy> X-#<cx> Y#<cy> I#<bx> J-#<yfeedpos>
+
+			o801 else
+				(Otherwise:)
+				(Cut circle to latch)
+				(Arc over latch)
+				(Cut circle to hinge)
+
+				(x,y location to stop arc at)
+				#<stopy> = [ 0.5 * [[[#<latchr> + #<toolr>]**2 - #<currentr>**2]/#<or> - #<or>] ]
+				#<stopx> = [ SQRT[#<currentr>**2 - #<stopy>**2]]
+
+				(Arc to start of latch)
+				G02 F#<feedxy> X#<stopx> Y#<stopy> I-#<cx> J-#<cy>
+
+				(Arc around the latch)
+				G03 F#<feedxy> X-#<stopx> Y#<stopy> I-#<stopx> J[-#<stopy> - #<or>]
+
+				(Finish arc)
+				G02 F#<feedxy> X-#<cx> Y#<cy> I#<stopx> J-#<stopy>
+			o801 endif
+		o800 else
+			(Otherwise, just cut the circle)
+			G02 F#<feedxy> X-#<cx> Y#<cy> I-#<cx> J-#<cy>
+		o800 endif
+		(end else here)
+		G01 F#<feedxy> Y[#<or> - #<toolr> - #<hinged>]
+	
+		(Set next radius)
+		#<nextr> = [#<currentr> + #<stepover> * #<toold>]
+		o704 if[ [#<nextr> GE #<cutoutr>] AND [#<currentr> LT #<cutoutr>] ]
+			#<currentr> = #<cutoutr>
+		o704 else
+			#<currentr> = #<nextr>
+		o704 endif
+		
+		#<cy> = [ SQRT[#<currentr>*#<currentr> - #<cx>*#<cx>] ]
+	o703 endwhile
+	
+	
+	(Do a little arc around the back of the hinge)
+	#<currentr> = #<cutoutr>
+	#<cy> = [ SQRT[#<currentr>*#<currentr> - #<cx>*#<cx>] ]
+	G00 Y#<cy>
+	G02 F#<feedxy> X#<cx> Y#<cy> I#<cx> J-#<cy>
+	G00 Y#<hinger>
+	G00 X[#<toolr>/1.5] Y0.0000
+
+
+	(Set next depth)
+	o634 if [[#<ccd> GT #<zlow>] AND [[#<ccd> - #<passdepth>] LT #<zlow>]]
+		#<ccd> = [#<zlow>]
+	o634 else
+		#<ccd> = [[#<ccd> - #<passdepth>]]
+	o634 endif
+o631 endwhile
+G00 Z[#<zsafe>]
+(End mill around hinge with latch)
+
+
+
+
+(Start cylindrical pocket)
+#<endr> = [#2/2 - #<toolr>] (End at cut-out radius)
+#<zlow> = [[1/25.4]]
+#<numsteps> = [4]
+
+o431 while [#<ccd> GE #<zlow>]
+	#<currentr> = [[#<toolr> / 1.5]]
+	#<nextr> = [#<currentr>]
+	#<currentstep> = [0]
+	#<nextstep> = [[[#<currentstep> + 1] MOD #<numsteps>]]
+
+	(Feed down to correct depth)
+	G00 X[[0.0000 + #<toolr>/1.5]] Y[0.0000]
+	G02 F[#<feedxy>] X[[0.0000 + #<toolr>/1.5]] Y[0.0000] Z[#<ccd>] I[0.0000 - [0.0000 + #<toolr>/1.5]] J[0.0000 - 0.0000]
+	G02 F[#<feedxy>] X[[0.0000 + #<toolr>/1.5]] Y[0.0000] Z[#<ccd>] I[0.0000 - [0.0000 + #<toolr>/1.5]] J[0.0000 - 0.0000]
+	(Spiral out)
+	o432 while [#<nextr> LE #<endr>]
+		#<cangle> = [[-90 * #<currentstep>]]
+		#<nangle> = [[-90 * #<nextstep>]]
+		#<tmpcx> = [[0.0000 - [[#<nextr>*#<nextr> - #<currentr>*#<currentr>] / [2 * #<currentr>] * cos[#<cangle>]] ]]
+		#<tmpcy> = [[0.0000 - [[#<nextr>*#<nextr> - #<currentr>*#<currentr>] / [2 * #<currentr>] * sin[#<cangle>]] ]]
+		#<tmpsx> = [[0.0000 + #<currentr> * cos[#<cangle>]]]
+		#<tmpsy> = [[0.0000 + #<currentr> * sin[#<cangle>]]]
+
+		G02 F[#<feedxy>] X[[0.0000 + #<nextr> * cos[#<nangle>]]] Y[[0.0000 + #<nextr> * sin[#<nangle>]]] I[#<tmpcx> - #<tmpsx>] J[#<tmpcy> - #<tmpsy>]
+
+		#<currentstep> = [#<nextstep>]
+		#<nextstep> = [[[#<currentstep> + 1] MOD #<numsteps>]]
+		#<currentr> = [#<nextr>]
+		#<nextr> = [[#<currentr> + #<toold> * #<stepover> / #<numsteps>]]
+
+		(Set next radius)
+		o433 if [[#<nextr> GT #<endr>] AND [#<currentr> LT #<endr>]]
+			#<nextr> = [#<endr>]
+		o433 endif
+	o432 endwhile
+
+	(Cut a full circle to finish up edges)
+	G02 F[#<feedxy>] X[[0.0000 + #<endr> * cos[#<currentstep>*-90]]] Y[[0.0000 + #<endr> * sin[#<currentstep>*-90]]] I[0.0000 - [0.0000 + #<endr> * cos[#<currentstep>*-90]]] J[0.0000 - [0.0000 + #<endr> * sin[#<currentstep>*-90]]]
+
+	(Set next depth)
+	o434 if [[#<ccd> GT #<zlow>] AND [[#<ccd> - #<passdepth>] LT #<zlow>]]
+		#<ccd> = [#<zlow>]
+	o434 else
+		#<ccd> = [[#<ccd> - #<passdepth>]]
+	o434 endif
+o431 endwhile
+G00 Z[#<zsafe>]
+(End cylindrical pocket)
+
+
+
+
+(Cut out piece)
+G00 X#<cutoutr> Y0.0000
+G00 Z[#<ccd> + 0.02]
+#<ccd> = [3/25.4]
+#<zlow> = [1/25.4]
+o531 while [ #<ccd> GE #<zlow> ]
+
+	G02 F#<feedxy> X#<cutoutr> y0.0000 Z#<ccd> I-#<cutoutr> J0.0000
+	G02 F#<feedxy> X#<cutoutr> y0.0000 Z#<ccd> I-#<cutoutr> J0.0000
+
+	(Set next depth)
+	o534 if [[#<ccd> GT #<zlow>] AND [[#<ccd> - #<passdepth>] LT #<zlow>]]
+		#<ccd> = [#<zlow>]
+	o534 else
+		#<ccd> = [[#<ccd> - #<passdepth>]]
+	o534 endif
+o531 endwhile
+
+
+M9 ( Coolant off. )
+M2 ( Program end. )
+
+

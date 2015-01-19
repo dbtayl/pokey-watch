@@ -1,0 +1,445 @@
+G94	(Start in units/min mode)
+G20
+G90
+
+
+
+(Should zero tool to table and center of workpiece)
+(Bottom will end up being 8mm thick: 2mm for PCB, 5mm for battery, 1mm for backplane)
+(Tallest component on PCB extends 2.2mm above surface of board)
+
+
+(MSG, Tool should be zeroed to the table; use 1/4" end mill)
+M0 (pause)
+
+
+
+#<toolr> = [0.25/2]
+#<feedz> = [3]
+#<feedxy> = [40]
+#<passdepth> = [0.025]
+#<worktop> = [0.378]
+#<zsafe> = [#<worktop> + 0.05]
+
+#<or> = [[54/25.4] / 2]
+#<pcbr> = [[46/25.4] / 2]
+#<pcbinset> = [0.0787402]
+#<batteryx> = [1.41732]
+#<batteryy> = [0.944882]
+#<batterylowz> = [[#<worktop> - #<pcbinset> - 5.0/25.4]]
+
+(PCB inset)
+(Start cylindrical pocket)
+G00 Z[#<zsafe>]
+G01 F[#<feedz>] Z[[#<worktop> + 0.01]]
+#<ccd> = [[#<worktop> + 0.01] - #<passdepth>]
+#<endr> = [[#<pcbr> - #<toolr>]]
+#<zlow> = [[#<worktop> - #<pcbinset>]]
+#<numsteps> = [4]
+
+o100 while [#<ccd> GE #<zlow>]
+	#<currentr> = [[#<toolr> / 1.5]]
+	#<nextr> = [#<currentr>]
+	#<currentstep> = [0]
+	#<nextstep> = [[[#<currentstep> + 1] MOD #<numsteps>]]
+
+	(Feed down to correct depth)
+	G00 X[[0.0000 + #<toolr>/1.5]] Y[0.0000]
+	G02 F[#<feedxy>] X[[0.0000 + #<toolr>/1.5]] Y[0.0000] Z[#<ccd>] I[0.0000 - [0.0000 + #<toolr>/1.5]] J[0.0000 - 0.0000]
+
+	(Spiral out)
+	o101 while [#<nextr> LE #<endr>]
+		#<cangle> = [[-90 * #<currentstep>]]
+		#<nangle> = [[-90 * #<nextstep>]]
+		#<tmpcx> = [[0.0000 - [[#<nextr>*#<nextr> - #<currentr>*#<currentr>] / [2 * #<currentr>] * cos[#<cangle>]] ]]
+		#<tmpcy> = [[0.0000 - [[#<nextr>*#<nextr> - #<currentr>*#<currentr>] / [2 * #<currentr>] * sin[#<cangle>]] ]]
+		#<tmpsx> = [[0.0000 + #<currentr> * cos[#<cangle>]]]
+		#<tmpsy> = [[0.0000 + #<currentr> * sin[#<cangle>]]]
+
+		G02 F[#<feedxy>] X[[0.0000 + #<nextr> * cos[#<nangle>]]] Y[[0.0000 + #<nextr> * sin[#<nangle>]]] I[#<tmpcx> - #<tmpsx>] J[#<tmpcy> - #<tmpsy>]
+
+		#<currentstep> = [#<nextstep>]
+		#<nextstep> = [[[#<currentstep> + 1] MOD #<numsteps>]]
+		#<currentr> = [#<nextr>]
+		#<nextr> = [[#<currentr> + #<toolr> / #<numsteps>]]
+
+		(Set next radius)
+		o102 if [[#<nextr> GT #<endr>] AND [#<currentr> LT #<endr>]]
+			#<nextr> = [#<endr>]
+		o102 endif
+	o101 endwhile
+
+	(Cut a full circle to finish up edges)
+	G02 F[#<feedxy>] X[[0.0000 + #<currentr> * cos[#<currentstep>*-90]]] Y[[0.0000 + #<currentr> * sin[#<currentstep>*-90]]] I[0.0000 - [0.0000 + #<currentr> * cos[#<currentstep>*-90]]] J[0.0000 - [0.0000 + #<currentr> * sin[#<currentstep>*-90]]]
+
+	(Set next depth)
+	o103 if [[#<ccd> GT #<zlow>] AND [[#<ccd> - #<passdepth>] LT #<zlow>]]
+		#<ccd> = [#<zlow>]
+	o103 else
+		#<ccd> = [[#<ccd> - #<passdepth>]]
+	o103 endif
+o100 endwhile
+G00 Z[#<zsafe>]
+(End cylindrical pocket)
+
+
+(Battery compartment)
+(Start rectangular pocket)
+#<xmax> = [[#<batteryx> / 2 - #<toolr>]]
+#<ymax> = [[#<batteryy> / 2 - #<toolr>]]
+o104 if [#<batteryx> LT #<batteryy>]
+	#<ystep> = [#<toolr>]
+	#<xstep> = [[#<ystep> * #<xmax> / #<ymax>]]
+o104 else
+	#<xstep> = [#<toolr>]
+	#<ystep> = [[#<xstep> * #<ymax> / #<xmax>]]
+o104 endif
+G00 Z[#<zsafe>]
+G01 F[#<feedz>] Z[[[#<worktop> - #<pcbinset>] + 0.01]]
+#<ccd> = [[[#<worktop> - #<pcbinset>]]]
+#<zlow> = [#<batterylowz>]
+#<numsteps> = [4]
+#<centerx> = [0.0000]
+#<centery> = [0.0000]
+
+o105 while [#<ccd> GE #<zlow>]
+	G00 X[[0.0000 + #<toolr>/1.5]] Y[0.0000]
+	G02 F[#<feedxy>] X[[0.0000 + #<toolr>/1.5]] Y[0.0000] Z[#<ccd>] I[0.0000 - [0.0000 + #<toolr>/1.5]] J[0.0000 - 0.0000]
+
+	#<xlim> = [#<xstep>]
+	#<ylim> = [#<ystep>]
+	#<currentstep> = [0]
+
+	o106 while [[#<xlim> LE #<xmax>] AND [#<ylim> LE #<ymax>]]
+		o107 if [#<currentstep> EQ 0]
+			G01 F[#<feedxy>] Y[[#<centery> - #<ylim>]]
+		o107 elseif [#<currentstep> EQ 1]
+			G01 F[#<feedxy>] X[#<centerx> - #<xlim>]
+		o107 elseif [#<currentstep> EQ 2]
+			G01 F[#<feedxy>] Y[#<centery> + #<ylim>]
+			o108 if [[#<ylim> LT #<ymax>] AND [[#<ylim> + #<ystep>] GT #<ymax>]]
+				#<ylim> = [#<ymax>]
+			o108 else
+				#<ylim> = [[#<ylim> + #<ystep>]]
+			o108 endif
+		o107 else
+			G01 F[#<feedxy>] X[#<centerx> + #<xlim>]
+			o109 if [[#<xlim> LT #<xmax>] AND [[#<xlim> + #<xstep>] GT #<xmax>]]
+				#<xlim> = [#<xmax>]
+			o109 else
+				#<xlim> = [[#<xlim> + #<xstep>]]
+			o109 endif
+		o107 endif
+
+		(Set next step in the iteration)
+		#<currentstep> = [[[#<currentstep> + 1] MOD #<numsteps>]]
+	o106 endwhile
+
+	(Finish up this pass)
+	G01 F[#<feedxy>] X[#<centerx> + #<xmax>]
+	G01 F[#<feedxy>] Y[#<centery> - #<ymax>]
+	G01 F[#<feedxy>] X[#<centerx> + #<xmax> - 2*#<toolr>]
+
+	(Set next depth)
+	o110 if [[#<ccd> GT #<zlow>] AND [[#<ccd> - #<passdepth>] LT #<zlow>]]
+		#<ccd> = [#<zlow>]
+	o110 else
+		#<ccd> = [[#<ccd> - #<passdepth>]]
+	o110 endif
+o105 endwhile
+G00 Z[#<zsafe>]
+(End rectangular pocket)
+
+
+
+
+
+(mic cutout)
+(For mic, an r=13mm arc centered at x=0, y=+9 mm should do it; only need part of the circle)
+#<arcr> = [13/25.4 - #<toolr>] (max arc radius)
+#<arccy> = [9/25.4] (arc Y center; X center is 0)
+#<crad> = [#<toolr>] (current radius)
+#<zlow> = #<batterylowz> (max cut depth)
+#<ccd> = [#<worktop> - #<pcbinset> - #<passdepth>] (current Z depth)
+
+G00 Z#<zsafe>
+
+(depth loop)
+o120 while [#<ccd> GE #<zlow>]
+
+	#<crad> = [#<toolr>]
+	G00 X#<crad> Y[#<arccy> - 0.02]
+	G01 F#<feedxy> Z#<ccd>
+	G01 F#<feedxy> Y#<arccy>
+	G01 F#<feedxy> X-#<crad>
+	
+	(cut loop)
+	o121 while [#<crad> LE #<arcr>]
+		G01 F#<feedxy> X-#<crad> (go to start of next arc)
+	
+		G02 F#<feedxy> X#<crad> Y#<arccy> I#<crad> J0.0000
+		
+		(Set next radius)
+		o123 if[ [#<crad> LT #<arcr>] AND [[#<crad> + #<toolr> + 0.006] GT #<arcr>] ]
+			#<crad> = #<arcr>
+		o123 else
+			#<crad> = [#<crad> + #<toolr> + 0.006]
+		o123 endif
+	o121 endwhile
+	
+	
+	(Set next depth)
+	o122 if[ [#<ccd> GT #<zlow>] AND [[#<ccd> - #<passdepth>] LT #<zlow>] ]
+		#<ccd> = #<zlow>
+	o122 else
+		#<ccd> = [#<ccd> - #<passdepth>]
+	o122 endif
+	
+o120 endwhile
+
+G00 Z#<zsafe>
+(End mic cutout)
+
+
+
+
+(USB cutout- the portion that this operation needs to do)
+(Want a cut 18.35 mm wide, so cutter goes +/- 6mm)
+
+#<zlow> = #<batterylowz> (max cut depth)
+#<ylim> = [18.35/2/25.4 - #<toolr>] (+/- Y distance- defines width of cutout)
+#<ccd> = [#<worktop> - #<pcbinset> - #<passdepth>] (current Z depth)
+#44 = [#<pcbr> - #<toolr>] (PCB radius minus cutter radius, for convenience)
+#43 = [ sqrt[[#44*#44] - [#<ylim>*#<ylim>]] ] (x infeed depth when Y = #<ylim>)
+#<xsafe> = -[#<batteryx>/2 - #<toolr> - 0.01]
+
+G00 Z#<zsafe> (retract)
+
+(depth loop)
+o130 while [#<ccd> GE #<zlow>]
+
+	(feed in, feed across, arc, feed out, goto start)
+	G00 X#<xsafe> Y#<ylim> (go to start)
+	G01 Z#<ccd>
+	G01 F#<feedxy> X-#43 Y#<ylim> (feedxy in)
+	G01 F#<feedxy> X-#43 Y-#<ylim> (feedxy across)
+	G02 F#<feedxy> X-#43 Y#<ylim> I#43 J#<ylim> (arc)
+	G01 F#<feedxy> X#<xsafe> Y#<ylim> (feedxy out)
+	
+
+	(Set next depth)
+	o131 if[ [#<ccd> GT #<zlow>] AND [[#<ccd> - #<passdepth>] LT #<zlow>] ]
+		#<ccd> = #<zlow>
+	o131 else
+		#<ccd> = [#<ccd> - #<passdepth>]
+	o131 endif
+o130 endwhile
+
+G00 Z#<zsafe>
+(End USB cutout)
+
+
+
+("Latch" cutout)
+G00 Z#<zsafe>
+
+#<lmaxy> = [#<or> + #<toolr>]
+#<lminy> = [#<or> - #<toolr>]
+#<latchd> = [0.05 + 0.003]
+#<passdepth> = 0.018
+#<ccd> = [#<worktop> - #<passdepth>]
+#<zlow> = [#<worktop> - #<latchd>]
+
+G00 X0.0000 Y#<lmaxy>
+G01 F#<feedz> Z#<worktop>
+
+o1000 while [ #<ccd> GE #<zlow> ]
+	G01 F#<feedxy> Y#<lminy> Z#<ccd>
+	Y#<lmaxy>
+
+	(Set next depth)
+	o1031 if[ [#<ccd> GT #<zlow>] AND [[#<ccd> - #<passdepth>] LT #<zlow>] ]
+		#<ccd> = #<zlow>
+	o1031 else
+		#<ccd> = [#<ccd> - #<passdepth>]
+	o1031 endif
+o1000 endwhile
+
+
+G00 Z#<zsafe>
+(End latch cutout)
+
+
+
+(Start of code using 1/8" end mill)
+(MSG, Tool should be zeroed to the table; switch to 1/8" end mill)
+M0 (pause)
+#<toolr> = [0.125/2]
+#<passdepth> = 0.015
+
+
+
+
+(Hinge)
+(4.5mm deep, 5mm in y, 7mm wide in x)
+#<hinged> = [4.5/25.4]
+#<hingelow> = [#<worktop> - #<hinged>]
+#<ccd> = [#<worktop> - #<passdepth>]
+#<ypad> = [0.0400]
+#<hingey> = [5/25.4 + #<ypad>]
+#<hingex> = [7.01/25.4]
+(Add whole #<ypad> because one #<ypad>/2 is already in #<hingey>)
+#<yc> = [-#<or> + #<hingey> / 2 - #<ypad>]
+
+(Start rectangular pocket)
+#<xmax> = [[#<hingex> / 2 - #<toolr>]]
+#<ymax> = [[#<hingey> / 2 - #<toolr>]]
+o113 if [#<hingex> LT #<hingey>]
+	#<ystep> = [#<toolr>]
+	#<xstep> = [[#<ystep> * #<xmax> / #<ymax>]]
+o113 else
+	#<xstep> = [#<toolr>]
+	#<ystep> = [[#<xstep> * #<ymax> / #<xmax>]]
+o113 endif
+G00 Z[#<zsafe>]
+G01 F[#<feedz>] Z[[#<worktop> + 0.01]]
+#<ccd> = [[#<worktop> + 0.01]]
+#<zlow> = [#<hingelow>]
+#<numsteps> = [4]
+#<centerx> = [0.0000]
+#<centery> = [#<yc>]
+
+o114 while [#<ccd> GE #<zlow>]
+	G00 X[[0.0000 + #<toolr>/1.5]] Y[#<yc>]
+	G02 F[#<feedxy>] X[[0.0000 + #<toolr>/1.5]] Y[#<yc>] Z[#<ccd>] I[0.0000 - [0.0000 + #<toolr>/1.5]] J[#<yc> - #<yc>]
+
+	#<xlim> = [#<xstep>]
+	#<ylim> = [#<ystep>]
+	#<currentstep> = [0]
+
+	o115 while [[#<xlim> LE #<xmax>] AND [#<ylim> LE #<ymax>]]
+		o116 if [#<currentstep> EQ 0]
+			G01 F[#<feedxy>] Y[[#<centery> - #<ylim>]]
+		o116 elseif [#<currentstep> EQ 1]
+			G01 F[#<feedxy>] X[#<centerx> - #<xlim>]
+		o116 elseif [#<currentstep> EQ 2]
+			G01 F[#<feedxy>] Y[#<centery> + #<ylim>]
+			o117 if [[#<ylim> LT #<ymax>] AND [[#<ylim> + #<ystep>] GT #<ymax>]]
+				#<ylim> = [#<ymax>]
+			o117 else
+				#<ylim> = [[#<ylim> + #<ystep>]]
+			o117 endif
+		o116 else
+			G01 F[#<feedxy>] X[#<centerx> + #<xlim>]
+			o118 if [[#<xlim> LT #<xmax>] AND [[#<xlim> + #<xstep>] GT #<xmax>]]
+				#<xlim> = [#<xmax>]
+			o118 else
+				#<xlim> = [[#<xlim> + #<xstep>]]
+			o118 endif
+		o116 endif
+
+		(Set next step in the iteration)
+		#<currentstep> = [[[#<currentstep> + 1] MOD #<numsteps>]]
+	o115 endwhile
+
+	(Finish up this pass)
+	G01 F[#<feedxy>] X[#<centerx> + #<xmax>]
+	G01 F[#<feedxy>] Y[#<centery> - #<ymax>]
+	G01 F[#<feedxy>] X[#<centerx> + #<xmax> - 2*#<toolr>]
+
+	(Set next depth)
+	o119 if [[#<ccd> GT #<zlow>] AND [[#<ccd> - #<passdepth>] LT #<zlow>]]
+		#<ccd> = [#<zlow>]
+	o119 else
+		#<ccd> = [[#<ccd> - #<passdepth>]]
+	o119 endif
+o114 endwhile
+G00 Z[#<zsafe>]
+(End rectangular pocket)
+
+
+
+
+
+(Second part of hinge- area to allow pin to be inserted)
+#<hinged> = [4/25.4]
+#<hingelow> = [#<worktop> - #<hinged>]
+#<hingex> = [9/25.4]
+(Start rectangular pocket)
+#<xmax> = [[#<hingex> / 2 - #<toolr>]]
+#<ymax> = [[#<hingey> / 2 - #<toolr>]]
+o180 if [#<hingex> LT #<hingey>]
+	#<ystep> = [#<toolr>]
+	#<xstep> = [[#<ystep> * #<xmax> / #<ymax>]]
+o180 else
+	#<xstep> = [#<toolr>]
+	#<ystep> = [[#<xstep> * #<ymax> / #<xmax>]]
+o180 endif
+G00 Z[#<zsafe>]
+G01 F[#<feedz>] Z[[#<worktop> + 0.01]]
+#<ccd> = [[#<worktop> + 0.01]]
+#<zlow> = [#<hingelow>]
+#<numsteps> = [4]
+#<centerx> = [[7/25.4 + #<hingex> / 2]]
+#<centery> = [#<yc>]
+
+o181 while [#<ccd> GE #<zlow>]
+	G00 X[[[7/25.4 + #<hingex> / 2] + #<toolr>/1.5]] Y[#<yc>]
+	G02 F[#<feedxy>] X[[[7/25.4 + #<hingex> / 2] + #<toolr>/1.5]] Y[#<yc>] Z[#<ccd>] I[[7/25.4 + #<hingex> / 2] - [[7/25.4 + #<hingex> / 2] + #<toolr>/1.5]] J[#<yc> - #<yc>]
+
+	#<xlim> = [#<xstep>]
+	#<ylim> = [#<ystep>]
+	#<currentstep> = [0]
+
+	o182 while [[#<xlim> LE #<xmax>] AND [#<ylim> LE #<ymax>]]
+		o183 if [#<currentstep> EQ 0]
+			G01 F[#<feedxy>] Y[[#<centery> - #<ylim>]]
+		o183 elseif [#<currentstep> EQ 1]
+			G01 F[#<feedxy>] X[#<centerx> - #<xlim>]
+		o183 elseif [#<currentstep> EQ 2]
+			G01 F[#<feedxy>] Y[#<centery> + #<ylim>]
+			o184 if [[#<ylim> LT #<ymax>] AND [[#<ylim> + #<ystep>] GT #<ymax>]]
+				#<ylim> = [#<ymax>]
+			o184 else
+				#<ylim> = [[#<ylim> + #<ystep>]]
+			o184 endif
+		o183 else
+			G01 F[#<feedxy>] X[#<centerx> + #<xlim>]
+			o185 if [[#<xlim> LT #<xmax>] AND [[#<xlim> + #<xstep>] GT #<xmax>]]
+				#<xlim> = [#<xmax>]
+			o185 else
+				#<xlim> = [[#<xlim> + #<xstep>]]
+			o185 endif
+		o183 endif
+
+		(Set next step in the iteration)
+		#<currentstep> = [[[#<currentstep> + 1] MOD #<numsteps>]]
+	o182 endwhile
+
+	(Finish up this pass)
+	G01 F[#<feedxy>] X[#<centerx> + #<xmax>]
+	G01 F[#<feedxy>] Y[#<centery> - #<ymax>]
+	G01 F[#<feedxy>] X[#<centerx> + #<xmax> - 2*#<toolr>]
+
+	(Set next depth)
+	o186 if [[#<ccd> GT #<zlow>] AND [[#<ccd> - #<passdepth>] LT #<zlow>]]
+		#<ccd> = [#<zlow>]
+	o186 else
+		#<ccd> = [[#<ccd> - #<passdepth>]]
+	o186 endif
+o181 endwhile
+G00 Z[#<zsafe>]
+(End rectangular pocket)
+
+
+
+
+
+(FIXME: REMOVE!!!!)
+(G00 Z#<zsafe>)
+(G00 X#<or> y0.0000)
+(G02 X#<or> y0.0000 I-#<or> J0.0000)
+
+
+
+M2	(stop program)
