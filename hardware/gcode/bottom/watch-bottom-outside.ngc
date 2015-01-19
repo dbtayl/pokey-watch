@@ -20,7 +20,7 @@ M0
 #2 = [46/25.4 + 0.008] (PCB inset diameter, with some padding)
 #4 = 0.25							(cutter diameter)
 #<toolr> = [#4/2]
-#<feedxy> = 40							(feed rate)
+#<feedxy> = 48							(feed rate)
 #<passdepth> = 0.025						(Z pass depth)
 #<cutoutpassdepth> = [#<passdepth> - 0.005]			(Z pass depth when cutting out)
 #<feedz> = 3
@@ -39,6 +39,7 @@ G01 F[#<feedz>] Z[[0.378 + 0.05]]
 #<endr> = [[[#<or> + #<toolr>] - #<toolr>]]
 #<zlow> = #<finishedtop>
 #<numsteps> = [4]
+#<stepover> = 0.7
 
 o127 while [#<ccd> GE #<zlow>]
 	#<currentr> = [[#<toolr> / 1.5]]
@@ -64,7 +65,7 @@ o127 while [#<ccd> GE #<zlow>]
 		#<currentstep> = [#<nextstep>]
 		#<nextstep> = [[[#<currentstep> + 1] MOD #<numsteps>]]
 		#<currentr> = [#<nextr>]
-		#<nextr> = [[#<currentr> + #<toolr> / #<numsteps>]]
+		#<nextr> = [[#<currentr> + 2*#<toolr>*#<stepover> / #<numsteps>]]
 
 		(Set next radius)
 		o129 if [[#<nextr> GT #<endr>] AND [#<currentr> LT #<endr>]]

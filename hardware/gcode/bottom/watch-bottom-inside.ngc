@@ -16,7 +16,7 @@ M0 (pause)
 
 #<toolr> = [0.25/2]
 #<feedz> = [3]
-#<feedxy> = [40]
+#<feedxy> = [48]
 #<passdepth> = [0.025]
 #<worktop> = [0.378]
 #<zsafe> = [#<worktop> + 0.05]
@@ -96,7 +96,7 @@ o104 else
 o104 endif
 G00 Z[#<zsafe>]
 G01 F[#<feedz>] Z[[[#<worktop> - #<pcbinset>] + 0.01]]
-#<ccd> = [[[#<worktop> - #<pcbinset>]]]
+#<ccd> = [[[#<worktop> - #<pcbinset> - #<passdepth>]]]
 #<zlow> = [#<batterylowz>]
 #<numsteps> = [4]
 #<centerx> = [0.0000]
@@ -243,8 +243,8 @@ G00 Z#<zsafe>
 ("Latch" cutout)
 G00 Z#<zsafe>
 
-#<lmaxy> = [#<or> + #<toolr>]
-#<lminy> = [#<or> - #<toolr>]
+#<lmaxy> = [#<or> + 2*#<toolr>]
+#<lminy> = [#<or>]
 #<latchd> = [0.05 + 0.003]
 #<passdepth> = 0.018
 #<ccd> = [#<worktop> - #<passdepth>]
@@ -285,7 +285,7 @@ M0 (pause)
 #<hinged> = [4.5/25.4]
 #<hingelow> = [#<worktop> - #<hinged>]
 #<ccd> = [#<worktop> - #<passdepth>]
-#<ypad> = [0.0400]
+#<ypad> = [0.0800]
 #<hingey> = [5/25.4 + #<ypad>]
 #<hingex> = [7.01/25.4]
 (Add whole #<ypad> because one #<ypad>/2 is already in #<hingey>)
