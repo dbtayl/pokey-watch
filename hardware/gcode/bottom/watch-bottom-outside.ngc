@@ -21,7 +21,7 @@ M0
 #4 = 0.25							(cutter diameter)
 #<toolr> = [#4/2]
 #<feedxy> = 48							(feed rate)
-#<passdepth> = 0.025						(Z pass depth)
+#<passdepth> = 0.030						(Z pass depth)
 #<cutoutpassdepth> = [#<passdepth> - 0.005]			(Z pass depth when cutting out)
 #<feedz> = 3
 #<worktop> = [0.378];

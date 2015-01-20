@@ -10,6 +10,8 @@ G90
 
 
 (MSG, Tool should be zeroed to the table; use 1/4" end mill)
+(MSG, This side should be cut before the outside)
+(MSG, IMPORTANT: Do you have a reference for alignment after flipping the piece over?)
 M0 (pause)
 
 
@@ -17,7 +19,7 @@ M0 (pause)
 #<toolr> = [0.25/2]
 #<feedz> = [3]
 #<feedxy> = [48]
-#<passdepth> = [0.025]
+#<passdepth> = [0.030]
 #<worktop> = [0.378]
 #<zsafe> = [#<worktop> + 0.05]
 
@@ -364,7 +366,7 @@ G00 Z[#<zsafe>]
 (Second part of hinge- area to allow pin to be inserted)
 #<hinged> = [4/25.4]
 #<hingelow> = [#<worktop> - #<hinged>]
-#<hingex> = [9/25.4]
+#<hingex> = [11/25.4]
 (Start rectangular pocket)
 #<xmax> = [[#<hingex> / 2 - #<toolr>]]
 #<ymax> = [[#<hingey> / 2 - #<toolr>]]

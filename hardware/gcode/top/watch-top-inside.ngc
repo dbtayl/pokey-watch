@@ -22,13 +22,18 @@ G64 P0.001 ( set maximum deviation from commanded toolpath )
 G04 P0 ( dwell for no time -- G64 should not smooth over this point )
 
 
+(MSG, 1/4" end mill should be zeroed to the table; the outside should have been cut already)
+(MSG, Make sure ZSafe is set to accommodate the thickness of the workpiece)
+M0
+
+
 (Constants for the whole cut)
 #<od> = [54/25.4]				(outer watch diameter)
 #<or> = [#<od>/2]				(outer watch radius)
 #2 = [46/25.4 + 0.008] (PCB inset diameter, with some padding)
 #<toold> = 0.25							(cutter diameter)
 #<feedxy> = 48							(feed rate)
-#<passdepth> = 0.025						(Z pass depth)
+#<passdepth> = 0.030						(Z pass depth)
 #14 = [#<or> + #<toold>/2]		(cutout radius with 1/4" cutter)
 #<stockheight> = [0.25]			(thickness of the workpiece)
 #<zsafe> = [#<stockheight>  + 0.05]							(ZSafe)
@@ -114,6 +119,7 @@ G00 Z[#<zsafe>]
 #<hinged> = [4/25.4]
 #<hingew> = [7/25.4]
 #<hinger> = [#<endr> - #<hinged>]
+#<hingerounding> = [1.4/25.4]
 
 o231 while [#<ccd> GE #<zlow>]
 	#<currentr> = [[#<toolr> / 1.5]]
@@ -168,13 +174,21 @@ o231 while [#<ccd> GE #<zlow>]
 	
 	(Cut around the hinge)
 	(cx is fixed here, just change cy)
+	#<roundy> = [#<cy> + #<hingerounding>]
 	#<cx> = [#<hingew>/2 + #<toolr>]
 	#<cy> = [ SQRT[#<currentr>*#<currentr> - #<cx>*#<cx>] ]
 	o303 while [#<currentr> LE #<cutoutr>]
-		G01 F#<feedxy> X#<cx>
+		G01 F#<feedxy> X[#<cx> - #<hingerounding>]
+		G03 F#<feedxy> X#<cx> Y#<roundy> I0.0000 J#<hingerounding>
+		
 		G01 F#<feedxy> Y#<cy>
 		G02 F#<feedxy> X-#<cx> Y#<cy> I-#<cx> J-#<cy>
-		G01 F#<feedxy> Y[#<or> - #<toolr> - #<hinged>]
+		
+		G01 F#<feedxy> Y[#<or> - #<toolr> - #<hinged> + #<hingerounding>]
+		G03 F#<feedxy> X[-#<cx> + #<hingerounding>] Y[#<or> - #<toolr> - #<hinged>] I#<hingerounding> J0.0000
+		
+		(G01 F#<feedxy> Y[#<or> - #<toolr> - #<hinged> + #<hingerounding>])
+		G01 F#<feedxy> X-#<cx>
 	
 		(Set next radius)
 		#<nextr> = [#<currentr> + #<stepover> * #<toold>]
@@ -211,7 +225,6 @@ o231 endwhile
 
 
 (Start mill around hinge with latch)
-(FIXME: Needs to, you know, mill around latch)
 #<zlow> = [3/25.4]
 
 o631 while [#<ccd> GE #<zlow>]
@@ -270,7 +283,10 @@ o631 while [#<ccd> GE #<zlow>]
 	#<cx> = [#<hingew>/2 + #<toolr>]
 	#<cy> = [ SQRT[#<currentr>*#<currentr> - #<cx>*#<cx>] ]
 	o703 while [#<currentr> LE #<cutoutr>]
-		G01 F#<feedxy> X#<cx>
+		(G01 F#<feedxy> X#<cx>)
+		(G01 F#<feedxy> Y#<cy>)
+		G01 F#<feedxy> X[#<cx> - #<hingerounding>]
+		G03 F#<feedxy> X#<cx> Y#<roundy> I0.0000 J#<hingerounding>
 		G01 F#<feedxy> Y#<cy>
 
 		(If cut would interfere with latch, cut around it)
@@ -337,7 +353,9 @@ o631 while [#<ccd> GE #<zlow>]
 			G02 F#<feedxy> X-#<cx> Y#<cy> I-#<cx> J-#<cy>
 		o800 endif
 		(end else here)
-		G01 F#<feedxy> Y[#<or> - #<toolr> - #<hinged>]
+		G01 F#<feedxy> Y[#<or> - #<toolr> - #<hinged> + #<hingerounding>]
+		G03 F#<feedxy> X[-#<cx> + #<hingerounding>] Y[#<or> - #<toolr> - #<hinged>] I#<hingerounding> J0.0000
+		G01 F#<feedxy> X-#<cx>
 	
 		(Set next radius)
 		#<nextr> = [#<currentr> + #<stepover> * #<toold>]
@@ -428,8 +446,8 @@ G00 Z[#<zsafe>]
 
 (Cut out piece)
 G00 X#<cutoutr> Y0.0000
-G00 Z[#<ccd> + 0.02]
 #<ccd> = [3/25.4]
+G00 Z[#<ccd> + 0.02]
 #<zlow> = [1/25.4]
 o531 while [ #<ccd> GE #<zlow> ]
 

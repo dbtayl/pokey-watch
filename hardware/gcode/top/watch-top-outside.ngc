@@ -11,6 +11,11 @@ M3      ( Spindle on clockwise.        )
 
 (Zero to table, center of watch)
 
+(MSG, Tool should be zeroed to the table. This side should be cut first)
+(MSG, Make sure ZSafe is set to accommodate the thickness of the workpiece)
+(MSG, IMPORTANT: Do you have a reference for alignment after flipping the piece over?)
+M0
+
 
 G64 P0.001 ( set maximum deviation from commanded toolpath )
 
@@ -23,11 +28,11 @@ G04 P0 ( dwell for no time -- G64 should not smooth over this point )
 #4 = 0.25							(cutter diameter)
 #11 = 48							(feed rate)
 #12 = 30							(feed rate for cutting straignt into material)
-#<passdepth> = 0.025						(Z pass depth)
+#<passdepth> = 0.030						(Z pass depth)
 #<chamferradius> = [#1/2 + #4/2]		(cutout radius with 1/4" cutter)
 
 #<stockheight> = [0.25]			(thickness of the workpiece)
-#<zsafe> = [#<stockheight> + 0.02]
+#<zsafe> = [#<stockheight> + 0.05]
 
 
 (1/4" cutter)
