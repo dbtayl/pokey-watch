@@ -1,0 +1,86 @@
+G94	(Start in units/min mode)
+G20
+G90
+
+G64 P0.001 ( set maximum deviation from commanded toolpath )
+
+
+(MSG, Tool should be zeroed to the top of the watch; use 1/8" end mill)
+M0 (pause)
+
+
+
+#<toolr> = [0.125/2]
+#<feedz> = [3]
+#<feedxy> = [20]
+#<passdepth> = [0.015]
+#<worktop> = [0]
+#<zsafe> = [#<worktop> + 0.05]
+
+#<flatx> = .24
+#<flaty> = .5
+#<xmax> = [[#<flatx> / 2 - #<toolr>]]
+#<ymax> = [[#<flaty> / 2 - #<toolr>]]
+
+#<ccd> = [[[#<worktop> - #<passdepth>]]]
+#<zlow> = [-1/25.4]
+#<centerx> = [0.0000]
+#<centery> = [0.0000]
+
+G00 Z[#<zsafe>]
+g00 X-#<xmax> Y-#<ymax>
+G00 Z#<worktop>
+
+(Mill a flat to allow USB cables to plug in all the way)
+o107 while [#<ccd> GE #<zlow>]
+	g01 F#<feedxy> y#<ymax> Z#<ccd>
+	x#<xmax>
+	y-#<ymax>
+	x-#<xmax>
+	y#<ymax>
+	y-#<ymax>
+
+	(Set next depth)
+	o111 if [[#<ccd> GT #<zlow>] AND [[#<ccd> - #<passdepth>] LT #<zlow>]]
+		#<ccd> = [#<zlow>]
+	o111 else
+		#<ccd> = [[#<ccd> - #<passdepth>]]
+	o111 endif
+o107 endwhile
+G00 Z[#<zsafe>]
+
+
+(Mill out the USB hole)
+#<holex> = .175
+#<holey> = .320
+#<xmax> = [[#<holex> / 2 - #<toolr>]]
+#<ymax> = [[#<holey> / 2 - #<toolr>]]
+#<ccd> = [[[#<worktop> - #<passdepth>]]]
+#<zlow> = [-0.175]
+#<centerx> = [0.0000]
+#<centery> = [0.0000]
+
+g00 X-#<xmax> Y-#<ymax>
+G00 Z#<worktop>
+
+o105 while [#<ccd> GE #<zlow>]
+	g01 F#<feedxy> y#<ymax> Z#<ccd>
+	x#<xmax>
+	y-#<ymax>
+	x-#<xmax>
+	y#<ymax>
+	y-#<ymax>
+
+	(Set next depth)
+	o110 if [[#<ccd> GT #<zlow>] AND [[#<ccd> - #<passdepth>] LT #<zlow>]]
+		#<ccd> = [#<zlow>]
+	o110 else
+		#<ccd> = [[#<ccd> - #<passdepth>]]
+	o110 endif
+o105 endwhile
+G00 Z[#<zsafe>]
+(End rectangular pocket)
+
+
+
+M2	(stop program)

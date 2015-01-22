@@ -35,7 +35,7 @@ M0
 #<feedxy> = 48							(feed rate)
 #<passdepth> = 0.030						(Z pass depth)
 #14 = [#<or> + #<toold>/2]		(cutout radius with 1/4" cutter)
-#<stockheight> = [0.25]			(thickness of the workpiece)
+#<stockheight> = [0.378]			(thickness of the workpiece)
 #<zsafe> = [#<stockheight>  + 0.05]							(ZSafe)
 #<feedz> = 3
 #<toold> = 0.25;
@@ -106,10 +106,10 @@ G00 Z[#<zsafe>]
 
 (Mill out the inside, around the hinge)
 (Hinge is 7mm wide, 4mm deep, 4mm tall, centered)
-(Add a "latch"; semi-circular 0.250" diameter, minus 3 mil clearance, or 0.244" diameter)
+(Add a "latch"; semi-circular 0.250" diameter, minus 2 mil clearance, or 0.246" diameter)
 (Make this feature 0.050" tall)
 #<latchh> = [0.05]
-#<latchd> = [0.250-0.006]
+#<latchd> = [0.250-0.004]
 #<latchr> = [#<latchd>/2]
 
 (Start mill around hinge)
@@ -119,7 +119,9 @@ G00 Z[#<zsafe>]
 #<hinged> = [4/25.4]
 #<hingew> = [7/25.4]
 #<hinger> = [#<endr> - #<hinged>]
-#<hingerounding> = [1.4/25.4]
+
+(Add #<toolr> here because the inside of a curve doesn't round like the outside)
+#<hingerounding> = [1.5/25.4 + #<toolr>]
 
 o231 while [#<ccd> GE #<zlow>]
 	#<currentr> = [[#<toolr> / 1.5]]

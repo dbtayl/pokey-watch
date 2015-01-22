@@ -4,6 +4,7 @@ G90     ( Absolute coordinates.        )
 S5000  ( RPM spindle speed.           )
 M3      ( Spindle on clockwise.        )
 
+G64 P0.001 ( set maximum deviation from commanded toolpath )
 
 (Hinge should be ~3mm tall)
 (Cut from 1/4" == 6.35mm stock)
@@ -31,7 +32,7 @@ G04 P0 ( dwell for no time -- G64 should not smooth over this point )
 #<passdepth> = 0.030						(Z pass depth)
 #<chamferradius> = [#1/2 + #4/2]		(cutout radius with 1/4" cutter)
 
-#<stockheight> = [0.25]			(thickness of the workpiece)
+#<stockheight> = [0.378]			(thickness of the workpiece)
 #<zsafe> = [#<stockheight> + 0.05]
 
 
@@ -51,44 +52,46 @@ G02 X#<chamferradius> Y0.0000 I-#<chamferradius> J0.0000 Z#<enddepth> F#11
 #9 = 0						(current spiral approximation step)
 
 
-o101 while [#<currentradius> GT #4/4]
+(o101 while [#<currentradius> GT #4/4])
 	#17 = #<currentradius>
 	#<currentradius> = [#<currentradius> - #<stepover>/4]
 	
 	(offset)
 	#18 = [ [#<currentradius>*#<currentradius> + #17*#17] / [2 * #17] ]
-	o103 if [#9 GE 2]
+	(o103 if [#9 GE 2])
 			#<currentradius> = -#<currentradius>
 			#18 = -#18
-	o103 endif
+	(o103 endif)
 	
-	o102 if [ [#9 MOD 2] LT 1 ] (adjust along X)
-		G02 F#11 X0.0000 Y-#<currentradius> I-#18 J0.0000
-	o102 else (adjust along Y)
-		G02 F#11 X-#<currentradius> Y0.0000 I0.0000 J#18
-	o102 endif
+	(o102 if [ [#9 MOD 2] LT 1 ]) (adjust along X)
+		(G02 F#11 X0.0000 Y-#<currentradius> I-#18 J0.0000)
+	(o102 else) (adjust along Y)
+		(G02 F#11 X-#<currentradius> Y0.0000 I0.0000 J#18)
+	(o102 endif)
 	
-	o104 if [#9 GE 2]
-			#<currentradius> = -#<currentradius>
-	o104 endif
+	(o104 if [#9 GE 2])
+			(#<currentradius> = -#<currentradius>)
+	(o104 endif)
 	
 	#9 = [[#9 + 1] MOD 4]
-o101 endwhile
+(o101 endwhile)
 
+G00 Z#<zsafe>
 
 (Get ready to partially cut out- make way for the chamfer mill)
 G00 X#<chamferradius> Y0.0000
+G00 Z#<stockheight>
 
 (We need to cut down 2mm)
 #<enddepth> = [#<stockheight> - #<passdepth>]
 
-o105 while [#<enddepth> GE [#<stockheight> - 2.0/25.4 - 0.005]]
+o105 while [#<enddepth> GE [#<stockheight> - 2.0/25.4]]
 	G02 X#<chamferradius> Y0.0000 I-#<chamferradius> J0.0000 Z#<enddepth> F#11
 	G02 X#<chamferradius> Y0.0000 I-#<chamferradius> J0.0000 Z#<enddepth> F#11
 	
 	(Set next depth)
-	o123 if[ [#<enddepth> GT [#<stockheight> - 2.0/25.4 - 0.005]] AND [[#<enddepth> - #<passdepth>] LT [#<stockheight> - 2.0/25.4 - 0.005]] ]
-		#<enddepth> = [#<stockheight> - 2.0/25.4 - 0.005]
+	o123 if[ [#<enddepth> GT [#<stockheight> - 2.0/25.4]] AND [[#<enddepth> - #<passdepth>] LT [#<stockheight> - 2.0/25.4]] ]
+		#<enddepth> = [#<stockheight> - 2.0/25.4]
 	o123 else
 		#<enddepth> = [#<enddepth> - #<passdepth>]
 	o123 endif
@@ -125,6 +128,9 @@ o115 endwhile
 
 
 G00 Z#<zsafe>	(retract)
+
+(MSG, You should do any etching on the top at this point)
+(MSG, Also, make sure you have a reference before flipping)
 
 
 

@@ -2,6 +2,8 @@ G94	(Start in units/min mode)
 G20
 G90
 
+G64 P0.001 ( set maximum deviation from commanded toolpath )
+
 
 
 (Should zero tool to table and center of workpiece)
