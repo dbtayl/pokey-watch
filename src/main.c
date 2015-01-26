@@ -59,7 +59,8 @@ void loop()
 	float mainFreqf = pitchDetect();
 	
 	//If no pitch is detected, turn off LEDs and abort this iteration
-	if(mainFreqf == RET_NO_PITCH)
+	//Also ignore if the pitch detected is outside of our pitch detection bounds
+	if( (mainFreqf == RET_NO_PITCH) || (mainFreqf < pitches[0] - 100*cent[0]) || (mainFreqf > pitches[NUM_PITCHES-1] + 100*cent[NUM_PITCHES-1]) )
 	{
 		LPC_GPIO0->DATA |= LED_ALL; //turn off all LEDs
 		return;
@@ -104,10 +105,9 @@ void loop()
 	}*/
 	//FIXME: End debug
 	
-
+	//Find the note associated with the pitch detected
 	uint8_t center;
 	float centErrf = 1000.0f;
-	
 	{
 		uint8_t k = 1;
 		for(k = 1; k < NUM_PITCHES; k++)
@@ -120,11 +120,12 @@ void loop()
 		}
 	}
 	
-	//Print the value:
+	//Integer version of cents sharp/flat
 	int8_t centErr  = (int8_t)(centErrf+0.5);
+	int8_t absCentErr = abs(centErr);
 	
-	
-	//printf("Main frequency: %f\n", mainFreq);
+	//FIXME: Remove for release
+	//Print out detected frequency
 	char out[9];
 	out[7] = '\n';
 	out[8] = '\r';
@@ -146,15 +147,14 @@ void loop()
 	out[0] = (center%100)/10 + 0x30;
 	out[1] = (center%10) + 0x30;
 	out[2] = centErr < 0 ? '-' : '+';
-	out[3] = (abs(centErr)%100)/10 + 0x30;
-	out[4] = (abs(centErr)%10) + 0x30;
+	out[3] = (absCentErr%100)/10 + 0x30;
+	out[4] = (absCentErr%10) + 0x30;
 	UARTWrite(out,9);
 	
 	UARTWrite("\n\r",2);
 	
 	
 	//Light LEDs to show sharp or flat
-	int8_t absCentErr = abs(centErr);
 	LPC_GPIO0->DATA |= LED_ALL; //turn off all LEDs
 	
 	if(absCentErr <= CENT_IT)
