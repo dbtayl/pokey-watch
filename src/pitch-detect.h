@@ -12,7 +12,18 @@
 #define CENT_FS 14
 #define CENT_IT 7
 
+#include <inttypes.h>
+#include "kiss_fftr.h"
+
+//If the peak value detected is less than this value, no pitch-matching
+//will be done and no LED will light
+#define NOISE_FLOOR 10
+
+//This value is returned in case of no pitch (noise floor not exceeded)
+#define RET_NO_PITCH -1.0f
+
 extern volatile uint16_t i;
+extern volatile kiss_fft_cpx fftout[];
 
 //Define PITCH_DETECT_FFT to use the FFT approach to determine pitches.
 //Define PITCH_DETECT_AUTO to use autocorrelation method
@@ -30,7 +41,7 @@ float pitchDetect();
 //Works with frequencies up to 900 Hz (which is ~A5)
 //FIXME: Trying lower sampling frequency- up to ~Bb4
 //#define SAMPLE_FREQ 1800
-#define SAMPLE_FREQ 1000
+#define SAMPLE_FREQ 1800
 #define N_POINTS 256
 
 extern volatile kiss_fft_scalar data[];

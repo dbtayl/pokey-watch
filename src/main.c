@@ -1,5 +1,5 @@
-//Look at Goertzel Algorithm
-
+//FIXME: Should add timeout to go to sleep/shutdown if no
+//input for some time
 
 
 #include "uafunc.h"
@@ -7,13 +7,15 @@
 #include "pitch-detect.h"
 
 void setup()
-{
+{	
 	LPC_IOCON->SWCLK_PIO0_10 |= 0x00000001;
 	LPC_GPIO0->DATA = 0xFFFFFFFF;
-	LPC_GPIO0->DIR = (1<<6)|(1<<7)|(1<<8)|(1<<9)|(1<<10); 
+	LPC_GPIO0->DIR |= (1<<6)|(1<<7)|(1<<8)|(1<<9)|(1<<10);
     
 	UARTInit(115200);
 	ADCInit(CHN0);
+	
+	//NOTE: The timer interrupt DOES happen at the correct frequency
 	Timer3Init(72000000/(2*SAMPLE_FREQ) - 1);
 	Timer3Match0(1,INTERRUPT|RESET);//This will generate an interrupt every OTHER time the divisor is hit
 	
@@ -55,16 +57,22 @@ void loop()
 	
 	float mainFreqf = pitchDetect();
 	
+	//If no pitch is detected, turn off LEDs and abort this iteration
+	if(mainFreqf == RET_NO_PITCH)
+	{
+		LPC_GPIO0->DATA |= LED_ALL; //turn off all LEDs
+		return;
+	}
+	
 	int mainFreq = (int)(mainFreqf + 0.5f);
 	
 	
-	//FIXME: Debug
+	//FIXME: Debug: FFT results
 	/*{
 		int t = 0;
 		for(t = 0; t < N_POINTS/2 + 1; t++)
 		{
 			int vali = (int)sqrt(fftout[t].r * fftout[t].r + fftout[t].i * fftout[t].i);
-			//int vali = data[t];
 			char out[9];
 			out[0] = (vali%10000)/1000 + 0x30;
 			out[1] = (vali%1000)/100 + 0x30;
@@ -74,8 +82,25 @@ void loop()
 			out[5] = '\r';
 			UARTWrite(out,6);
 		}
-		UARTWrite("\n\r",2);
 	}*/
+	//FIXME: End debug
+	
+	//FIXME: Debug: Raw data
+	{
+		int t = 0;
+		for(t = 0; t < N_POINTS; t++)
+		{
+			int vali = data[t];
+			char out[9];
+			out[0] = (vali%10000)/1000 + 0x30;
+			out[1] = (vali%1000)/100 + 0x30;
+			out[2] = (vali%100)/10 + 0x30;
+			out[3] = (vali%10) + 0x30;
+			out[4] = '\n';
+			out[5] = '\r';
+			UARTWrite(out,6);
+		}
+	}
 	//FIXME: End debug
 	
 	
@@ -151,6 +176,8 @@ void loop()
 	out[3] = (abs(centErr)%100)/10 + 0x30;
 	out[4] = (abs(centErr)%10) + 0x30;
 	UARTWrite(out,9);
+	
+	UARTWrite("\n\r",2);
 	
 	/*
 	char out[8];

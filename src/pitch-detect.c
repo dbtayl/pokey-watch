@@ -35,7 +35,11 @@ int pitchDetectInit()
 float pitchDetect()
 {	
 	//Wait for data collection to finish
-	while(i < N_POINTS) {}
+	//Use WFI instruction to sleep as much as possible
+	while(i < N_POINTS)
+	{
+		__WFI();
+	}
 	
 	//To frequency domain
 	kiss_fftr(cfg, data, fftout);
@@ -47,7 +51,9 @@ float pitchDetect()
 	int peakval = (int)sqrt(fftout[peakidx].r * fftout[peakidx].r + fftout[peakidx].i * fftout[peakidx].i);	
 	{
 		int r;
-		for(r = peakidx + 1; r < N_POINTS/2 + 1; r++)
+		//Don't go all the way to the last point because it's an edge case.
+		//We can't average with its neighbor, and it's at the fringe of the Nyquist rate anyway
+		for(r = peakidx + 1; r < N_POINTS/2/* + 1*/; r++)
 		{
 			int vali = (int)sqrt(fftout[r].r * fftout[r].r + fftout[r].i * fftout[r].i);
 			if(vali > peakval)
@@ -56,6 +62,11 @@ float pitchDetect()
 				peakval = vali;
 			}
 		}
+	}
+	
+	if(peakval < NOISE_FLOOR)
+	{
+		return RET_NO_PITCH;
 	}
 
 	//Using the weighted average of 5 values seems to produce a better result than for 3
