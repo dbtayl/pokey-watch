@@ -73,12 +73,12 @@ float pitchDetect()
 	//Maximum error reduced, both in pure-tone and in a slightly noisy scenario
 	float left = sqrt(fftout[peakidx-1].r * fftout[peakidx-1].r + fftout[peakidx-1].i * fftout[peakidx-1].i);
 	float right = sqrt(fftout[peakidx+1].r * fftout[peakidx+1].r + fftout[peakidx+1].i * fftout[peakidx+1].i);
-	//float mainFreqf = (left * (peakidx-1) + right * (peakidx+1) + peakidx * peakval) * SAMPLE_FREQ/N_POINTS / (left + peakval + right);
+	float mainFreqf = (left * (peakidx-1) + right * (peakidx+1) + peakidx * peakval) * (float)SAMPLE_FREQ/(float)N_POINTS / (left + peakval + right);
 
 	//These lines seem to help precision by up to a cent in the worst cases
-	float left2 = sqrt(fftout[peakidx-2].r * fftout[peakidx-2].r + fftout[peakidx-2].i * fftout[peakidx-2].i);
-	float right2 = sqrt(fftout[peakidx+2].r * fftout[peakidx+2].r + fftout[peakidx+2].i * fftout[peakidx+2].i);
-	float mainFreqf = (left2 * (peakidx-2) + left * (peakidx-1) + right * (peakidx+1) + right2 * (peakidx+2) + peakidx * peakval) * SAMPLE_FREQ/N_POINTS / (left + peakval + right + left2 + right2);
+	//float left2 = sqrt(fftout[peakidx-2].r * fftout[peakidx-2].r + fftout[peakidx-2].i * fftout[peakidx-2].i);
+	//float right2 = sqrt(fftout[peakidx+2].r * fftout[peakidx+2].r + fftout[peakidx+2].i * fftout[peakidx+2].i);
+	//float mainFreqf = (left2 * (peakidx-2) + left * (peakidx-1) + right * (peakidx+1) + right2 * (peakidx+2) + peakidx * peakval) * SAMPLE_FREQ/N_POINTS / (left + peakval + right + left2 + right2);
 
 	
 	smoothFreq[currentSmooth] = mainFreqf;

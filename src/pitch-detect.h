@@ -8,9 +8,9 @@
 #define LED_VS 0x00000400
 #define LED_ALL 0x000007C0
 
-#define CENT_VFVS 21
-#define CENT_FS 14
-#define CENT_IT 7
+#define CENT_VFVS 19
+#define CENT_FS 12
+#define CENT_IT 5
 
 #include <inttypes.h>
 #include "kiss_fftr.h"
@@ -41,7 +41,7 @@ float pitchDetect();
 //Works with frequencies up to 900 Hz (which is ~A5)
 //FIXME: Trying lower sampling frequency- up to ~Bb4
 //#define SAMPLE_FREQ 1800
-#define SAMPLE_FREQ 1800
+#define SAMPLE_FREQ 1200
 #define N_POINTS 256
 
 extern volatile kiss_fft_scalar data[];

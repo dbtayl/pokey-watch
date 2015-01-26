@@ -12,6 +12,7 @@ void setup()
 	LPC_GPIO0->DATA = 0xFFFFFFFF;
 	LPC_GPIO0->DIR |= (1<<6)|(1<<7)|(1<<8)|(1<<9)|(1<<10);
     
+    //FIXME: Disable UART for final version
 	UARTInit(115200);
 	ADCInit(CHN0);
 	
@@ -86,7 +87,7 @@ void loop()
 	//FIXME: End debug
 	
 	//FIXME: Debug: Raw data
-	{
+	/*{
 		int t = 0;
 		for(t = 0; t < N_POINTS; t++)
 		{
@@ -100,42 +101,14 @@ void loop()
 			out[5] = '\r';
 			UARTWrite(out,6);
 		}
-	}
+	}*/
 	//FIXME: End debug
 	
-	
-	//Search for the pitch corresponding to this frequency
-	uint8_t start = 0;
-	uint8_t stop = NUM_PITCHES-1;
-	uint8_t center = (stop + start) >> 1;
-	while((stop - start) > 1)
-	{
-		if(pitches[center] < mainFreqf)
-		{
-			start = center;
-		}
-		else
-		{
-			stop = center;
-		}
-		center = (stop + start) >> 1;
-	}
-	
-	//Pick the pitch with the lowest error
-	float centErrf;
-	/*if(abs(pitches[start] - mainFreqf) < abs(pitches[stop] - mainFreqf))
-	{
-		center = start;
-		centErrf = (pitches[start] - mainFreqf) / cent[start];
-	}
-	else
-	{
-		center = stop;
-		centErrf = (pitches[stop] - mainFreqf) / cent[stop];
-	}*/
+
+	uint8_t center;
+	float centErrf = 1000.0f;
 	
 	{
-		centErrf = 1000.0f;
 		uint8_t k = 1;
 		for(k = 1; k < NUM_PITCHES; k++)
 		{
@@ -179,46 +152,35 @@ void loop()
 	
 	UARTWrite("\n\r",2);
 	
-	/*
-	char out[8];
-	out[6] = '\n';
-	out[7] = '\r';
-	uint16_t j = 0;
-	for(j = 0; j < N_POINTS/2 + 1; j++)
-	{
-		int16_t real = fftout[j].r;
-		int16_t imag = fftout[j].i;
-		int16_t val = sqrt(real*real + imag*imag);
-		out[0] = (val%1000000)/100000 + 0x30;
-		out[1] = (val%100000)/10000 + 0x30;
-		out[2] = (val%10000)/1000 + 0x30;
-		out[3] = (val%1000)/100 + 0x30;
-		out[4] = (val%100)/10 + 0x30;
-		out[5] = (val%10) + 0x30;
-		UARTWrite(out,8);
-	}*/
 	
 	//Light LEDs to show sharp or flat
+	int8_t absCentErr = abs(centErr);
 	LPC_GPIO0->DATA |= LED_ALL; //turn off all LEDs
 	
-	if(centErr <= -CENT_VFVS)
-	{
-		LPC_GPIO0->DATA ^= LED_VF;
-	}
-	else if(centErr <= -CENT_FS)
-	{
-		LPC_GPIO0->DATA ^= LED_F;
-	}
-	else if(centErr <= CENT_IT)
+	if(absCentErr <= CENT_IT)
 	{
 		LPC_GPIO0->DATA ^= LED_IT;
 	}
-	else if(centErr <= CENT_FS)
+	else if(absCentErr <= CENT_FS)
 	{
-		LPC_GPIO0->DATA ^= LED_S;
+		if(centErr < 0)
+		{
+			LPC_GPIO0->DATA ^= LED_F;
+		}
+		else
+		{
+			LPC_GPIO0->DATA ^= LED_S;
+		}
 	}
-	else if(centErr <= CENT_VFVS)
+	else
 	{
-		LPC_GPIO0->DATA ^= LED_VS;
+		if(centErr < 0)
+		{
+			LPC_GPIO0->DATA ^= LED_VF;
+		}
+		else
+		{
+			LPC_GPIO0->DATA ^= LED_VS;
+		}
 	}
 }
