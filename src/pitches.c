@@ -2,9 +2,9 @@
 
 //From A3 to A5
 const float pitchlist[NUM_PITCHES] = {
-//	220.00, /*A3*/
-//	233.08, /*Bb3*/
-//	246.94, /*B3*/
+	220.00, /*A3*/
+	233.08, /*Bb3*/
+	246.94, /*B3*/
 	261.63, /*C4*/
 	277.18, /*Db4*/
 	293.66, /*D4*/
@@ -32,9 +32,9 @@ const float pitchlist[NUM_PITCHES] = {
 
 //Approximate Hz per cent for a given note
 const float centlist[NUM_PITCHES] = {
-//	0.13080, /*A3*/
-//	0.13470, /*Bb3*/
-//	0.14275, /*B3*/
+	0.13080, /*A3*/
+	0.13470, /*Bb3*/
+	0.14275, /*B3*/
 	0.15120, /*C4*/
 	0.16015, /*Db4*/
 	0.16975, /*D4*/

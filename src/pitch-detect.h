@@ -8,8 +8,8 @@
 #define LED_VS 0x00000400
 #define LED_ALL 0x000007C0
 
-#define CENT_VFVS 19
-#define CENT_FS 12
+#define CENT_VFVS 15
+#define CENT_FS 10
 #define CENT_IT 5
 
 #include <inttypes.h>
@@ -17,7 +17,7 @@
 
 //If the peak value detected is less than this value, no pitch-matching
 //will be done and no LED will light
-#define NOISE_FLOOR 10
+#define NOISE_FLOOR 8
 
 //This value is returned in case of no pitch (noise floor not exceeded)
 #define RET_NO_PITCH -1.0f
@@ -38,11 +38,9 @@ float pitchDetect();
 #include "_kiss_fft_guts.h"
 
 //NOTE: 256 points seems to be the max with 8k of RAM- ~800B short of 512...
-//Works with frequencies up to 900 Hz (which is ~A5)
-//FIXME: Trying lower sampling frequency- up to ~Bb4
 //#define SAMPLE_FREQ 1800
 #define SAMPLE_FREQ 1200
-#define N_POINTS 256
+#define N_POINTS 384
 
 extern volatile kiss_fft_scalar data[];
 #endif //PITCH_DETECT_FFT
